@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+apps/frontend/node_modules/
+
+# Next.js
+apps/frontend/.next/
+apps/frontend/out/
+
+# Environment
+.env
+.env.local
+apps/frontend/.env.local
+apps/frontend/.env*.local
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*
+
+# Docker volumes (local)
+postgres_data/
+n8n_data/

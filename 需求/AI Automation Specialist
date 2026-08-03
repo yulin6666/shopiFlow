@@ -1,0 +1,33 @@
+Summary
+Build and run the AI automations and internal tools behind our Shopify shops in 9 markets.
+
+Pet Printed is an established Shopify ecommerce brand operating across 9 markets. We automate repetitive operational processes: product content generation and localization across markets, review handling, data syncing between tools, support routing and ad ops reporting.
+
+Some of these automations feed internal dashboards and tools that we host ourselves. Most run continuously at volume, so reliability, cost control and clean error handling are important. We are looking for an AI automation specialist to build and maintain them as an ongoing engagement.
+
+This is a lead role. Alongside your own builds, you help coordinate and review the work of the other AI freelancers we work with, so clear communication and documentation matter as much as technical skill.
+
+What you will do
+Build and maintain automations in n8n or Make, with Claude or OpenAI APIs as the intelligence layer inside workflows.
+Wire MCP tools into workflows and judge when a task should be a deterministic workflow versus an AI agent.
+Build and deploy lightweight internal dashboards and tools, for example a React or static front end pushed from GitHub to Vercel with managed environment variables.
+Keep everything reliable at volume: monitoring, cost control and clean error handling.
+Coordinate and review the work of our other AI freelancers, and document your automations so someone else can take them over.
+
+What you bring
+Strong with n8n and/or Make, using Claude or OpenAI APIs inside workflows.
+Able to build and deploy lightweight internal dashboards and tools.
+Some coding ability in JavaScript or Python for custom nodes and edge cases.
+Real ecommerce experience, ideally Shopify.
+Clear written communication in English and a habit of documenting what you build.
+
+Nice to have
+Multi market Shopify experience.
+Familiarity with the Meta and Google APIs.
+Experience reviewing or coordinating other freelancers or contractors.
+
+Key facts
+Start: with a small paid test task that mirrors real work, then ongoing if it is a good fit.
+Commitment: freelance, 20 to 30 hours per week, with room to grow into a larger scope.
+Location: fully remote, your time zone and region do not matter.
+Rate: 30 to 50 USD per hour, depending on experience.

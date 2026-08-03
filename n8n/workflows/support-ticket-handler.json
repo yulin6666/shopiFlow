@@ -1,0 +1,210 @@
+{
+  "name": "ShopiFow - Support Ticket AI Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopiflow-support",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-s-001",
+      "name": "Webhook - New Support Ticket",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "shopiflow-support"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-001",
+              "name": "ticketId",
+              "value": "={{ $json.body.ticket_id }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-002",
+              "name": "customerName",
+              "value": "={{ $json.body.customer_name }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-003",
+              "name": "customerMessage",
+              "value": "={{ $json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-004",
+              "name": "ticketType",
+              "value": "={{ $json.body.ticket_type }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-005",
+              "name": "orderId",
+              "value": "={{ $json.body.order_id }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-006",
+              "name": "orderNumber",
+              "value": "={{ $json.body.order_number }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-007",
+              "name": "orderTotal",
+              "value": "={{ $json.body.order_total }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-008",
+              "name": "fulfillmentStatus",
+              "value": "={{ $json.body.fulfillment_status }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-009",
+              "name": "chatInput",
+              "value": "={{ 'Customer: ' + $json.body.customer_name + '\\nTicket Type: ' + $json.body.ticket_type + '\\nOrder #' + $json.body.order_number + ' | Total: ' + $json.body.order_total + ' | Status: ' + ($json.body.fulfillment_status || 'unfulfilled') + '\\n\\nCustomer Message:\\n' + $json.body.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-s-002",
+      "name": "Prepare Ticket Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a professional e-commerce customer support AI for ShopiFow, an online fashion brand.\n\nYour job is to generate empathetic, helpful, and on-brand replies to customer support tickets.\n\nGuidelines:\n- Be warm, professional, and solution-oriented\n- Always acknowledge the customer's concern first\n- Provide concrete next steps or solutions\n- For shipping issues: offer tracking updates and estimated resolution times\n- For returns/refunds: explain the process clearly and offer alternatives\n- Keep replies concise (3-5 sentences max)\n- Sign off as \"ShopiFow Support Team\"\n\nAfter your reply, output a JSON block on a new line in this exact format:\n{\"handlingType\": \"refund|shipping|inquiry|needs_human\", \"confidence\": 0-100}\n\nUse \"needs_human\" if the issue requires manual intervention (complex disputes, legal threats, VIP escalations)."
+        }
+      },
+      "id": "node-s-003",
+      "name": "Support AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4-6",
+        "options": {}
+      },
+      "id": "node-s-004",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [560, 520],
+      "credentials": {
+        "openAiApi": {
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.output || '';\nconst jsonMatch = raw.match(/\\{[^}]*\"handlingType\"[^}]*\\}/);\nlet handlingType = 'inquiry';\nlet confidence = 85;\nlet reply = raw;\n\nif (jsonMatch) {\n  try {\n    const parsed = JSON.parse(jsonMatch[0]);\n    handlingType = parsed.handlingType || 'inquiry';\n    confidence = parsed.confidence || 85;\n    reply = raw.replace(jsonMatch[0], '').trim();\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    reply,\n    handlingType,\n    confidence,\n    needsHuman: handlingType === 'needs_human' || confidence < 70,\n    ticketId: $('Prepare Ticket Data').item.json.ticketId\n  }\n}];"
+      },
+      "id": "node-s-005",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.needsHuman }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-s-006",
+      "name": "Needs Human?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, reply: $json.reply, handlingType: $json.handlingType, confidence: $json.confidence, needsHuman: false }) }}"
+      },
+      "id": "node-s-007",
+      "name": "Respond - Auto Handled",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, reply: $json.reply, handlingType: $json.handlingType, confidence: $json.confidence, needsHuman: true, alert: 'Ticket flagged for human review' }) }}"
+      },
+      "id": "node-s-008",
+      "name": "Respond - Needs Human",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - New Support Ticket": {
+      "main": [[{ "node": "Prepare Ticket Data", "type": "main", "index": 0 }]]
+    },
+    "Prepare Ticket Data": {
+      "main": [[{ "node": "Support AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Support AI Agent": {
+      "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]]
+    },
+    "Parse AI Response": {
+      "main": [[{ "node": "Needs Human?", "type": "main", "index": 0 }]]
+    },
+    "Needs Human?": {
+      "main": [
+        [{ "node": "Respond - Auto Handled", "type": "main", "index": 0 }],
+        [{ "node": "Respond - Needs Human", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [[{ "node": "Support AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["shopiflow", "support", "ai"],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-03T00:00:00.000Z",
+  "versionId": "shopiflow-support-v2"
+}
