@@ -1,0 +1,239 @@
+{
+  "name": "ShopiFow - Judge.me Review Reply (All Platforms)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "judgeme-review",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Judge.me Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "judgeme-review"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst reviewId = body.reviewId || Date.now();\nconst rating = body.rating || 5;\nconst title = body.title || '';\nconst reviewBody = body.body || '';\nconst productTitle = body.productTitle || 'Our product';\nconst reviewerName = body.reviewerName || 'Customer';\nconst platform = body.platform || 'shopify';\n\nreturn [{\n  json: {\n    reviewId,\n    rating,\n    title,\n    body: reviewBody,\n    productTitle,\n    reviewerName,\n    platform,\n    chatInput: 'Product: ' + productTitle + '\\nRating: ' + rating + '/5\\nReviewer: ' + reviewerName + '\\nPlatform: ' + platform + '\\nTitle: ' + title + '\\nBody: ' + reviewBody\n  }\n}];"
+      },
+      "id": "parse-input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a brand voice specialist for a health supplement e-commerce store. Write a reply to the customer review provided.\n\nGuidelines:\n- Keep under 80 words\n- Genuine, warm tone (not corporate)\n- 1-2 stars: sincerely apologize, offer to make it right, provide support email\n- 3 stars: thank them, acknowledge specific concern, mention improvements\n- 4-5 stars: express genuine gratitude, reference specific praise point\n- NEVER make medical/health claims or promise therapeutic benefits\n- NEVER offer discounts or freebies publicly (handle offline)\n- If review mentions side effects: acknowledge concern, direct to support team\n\nIf you need product details, use the product knowledge tool to look up accurate information.\n\nOutput reply text only, no JSON, no quotation marks."
+        }
+      },
+      "id": "ai-agent",
+      "name": "Review AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4-6",
+        "options": {}
+      },
+      "id": "llm-model",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [620, 520],
+      "credentials": {
+        "openAiApi": { "id": "openrouter-openai-api", "name": "OpenRouter (OpenAI-compatible)" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this tool to look up product information, FAQs, and usage instructions. Search by product name or keyword.",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "shopiflow-doc",
+          "mode": "list",
+          "cachedResultName": "shopiflow-doc"
+        },
+        "topK": 2,
+        "options": {}
+      },
+      "id": "pinecone-tool",
+      "name": "Product Knowledge (Pinecone)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1,
+      "position": [820, 520],
+      "credentials": {
+        "pineconeApi": { "id": "pinecone-api", "name": "Pinecone API" }
+      }
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "embeddings",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [820, 680],
+      "credentials": {
+        "openAiApi": { "id": "openai-api", "name": "OpenAI API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const review = $('Parse Input').first().json;\nconst reply = ($input.first().json.output || $input.first().json.text || '').trim();\nconst rating = Number(review.rating);\nconst status = rating <= 3 ? 'needs_approval' : 'auto_replied';\n\nreturn [{\n  json: {\n    status,\n    reviewId: review.reviewId,\n    rating,\n    productTitle: review.productTitle,\n    reviewerName: review.reviewerName,\n    platform: review.platform,\n    generatedReply: reply,\n    originalReview: review.chatInput\n  }\n}];"
+      },
+      "id": "merge-reply",
+      "name": "Parse Reply & Determine Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rating }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "needs_approval"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rating }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "auto_approved"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "route-by-rating",
+      "name": "Route by Rating",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, rating: $json.rating, reply: $json.generatedReply, reviewId: $json.reviewId, productTitle: $json.productTitle, reviewerName: $json.reviewerName, platform: $json.platform }) }}",
+        "options": {}
+      },
+      "id": "respond-auto",
+      "name": "Respond (Auto Approved)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1440, 200]
+    },
+    {
+      "parameters": {
+        "content": "⚠️ **Review Reply Needs Approval**\n\n**Review ID:** {{ $json.reviewId }}\n**Product:** {{ $json.productTitle }}\n**Reviewer:** {{ $json.reviewerName }}\n**Platform:** {{ $json.platform }}\n**Rating:** {{ $json.rating }}/5 ⭐\n\n**Original Review:**\n```\n{{ $json.originalReview }}\n```\n\n**AI Generated Reply:**\n```\n{{ $json.generatedReply }}\n```\n\n👉 Low-rating review requires manual approval before publishing.",
+        "options": {}
+      },
+      "id": "slack-review-approval",
+      "name": "Slack Approval Request",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1440, 400],
+      "credentials": {
+        "slackApi": { "id": "slack-api", "name": "Slack API" }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, rating: $json.rating, reply: $json.generatedReply, reviewId: $json.reviewId, productTitle: $json.productTitle, reviewerName: $json.reviewerName, platform: $json.platform }) }}",
+        "options": {}
+      },
+      "id": "respond-needs-approval",
+      "name": "Respond (Needs Approval)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1680, 400]
+    }
+  ],
+  "connections": {
+    "Judge.me Webhook": {
+      "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
+    },
+    "Parse Input": {
+      "main": [[{ "node": "Review AI Agent", "type": "main", "index": 0 }]]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [[{ "node": "Review AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Product Knowledge (Pinecone)": {
+      "ai_tool": [[{ "node": "Review AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [[{ "node": "Product Knowledge (Pinecone)", "type": "ai_embedding", "index": 0 }]]
+    },
+    "Review AI Agent": {
+      "main": [[{ "node": "Parse Reply & Determine Status", "type": "main", "index": 0 }]]
+    },
+    "Parse Reply & Determine Status": {
+      "main": [[{ "node": "Route by Rating", "type": "main", "index": 0 }]]
+    },
+    "Route by Rating": {
+      "main": [
+        [{ "node": "Slack Approval Request", "type": "main", "index": 0 }],
+        [{ "node": "Respond (Auto Approved)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack Approval Request": {
+      "main": [[{ "node": "Respond (Needs Approval)", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-06T00:00:00.000Z",
+  "versionId": "shopiflow-review-v3"
+}

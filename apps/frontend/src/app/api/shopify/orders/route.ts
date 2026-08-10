@@ -1,14 +1,16 @@
-import { NextResponse } from 'next/server'
-import { fetchOrders } from '@/lib/shopify'
-import { buildTicketsFromOrders } from '@/lib/tickets'
+import { NextRequest, NextResponse } from 'next/server';
+import { getOrders } from '@/lib/shopify';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const orders = await fetchOrders(20)
-    const tickets = buildTicketsFromOrders(orders)
-    return NextResponse.json({ tickets })
-  } catch (err) {
-    console.error('Support tickets API error:', err)
-    return NextResponse.json({ error: 'Failed to load tickets' }, { status: 500 })
+    const { searchParams } = new URL(req.url);
+    const limit = parseInt(searchParams.get('limit') ?? '20', 10);
+
+    const orders = await getOrders(Math.min(limit, 50));
+    return NextResponse.json({ orders });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to fetch orders';
+    console.error('[orders API]', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -1,103 +1,118 @@
-import { SupportTicket, ProductReview } from '@/types'
-import { formatCurrency } from './utils'
+import { EscalationLevel, ReviewPlatform } from '@/types';
 
-export function buildSupportSystemPrompt(): string {
-  return `You are a professional e-commerce customer support AI for ShopiFow, an online fashion brand.
+// ---- Support: AI classification & escalation prompt ----
 
-Your job is to generate empathetic, helpful, and on-brand replies to customer support tickets.
+export const SUPPORT_SYSTEM_PROMPT = `You are an AI customer support agent for an e-commerce supplement brand selling on Shopify, Amazon, and TikTok Shop.
 
-Guidelines:
-- Be warm, professional, and solution-oriented
-- Always acknowledge the customer's concern first
-- Provide concrete next steps or solutions
-- For shipping issues: offer tracking updates and estimated resolution times
-- For returns/refunds: explain the process clearly and offer alternatives
-- Keep replies concise (3-5 sentences max)
-- Sign off as "ShopiFow Support Team"
+Your job is to:
+1. Classify the customer message into one of three categories:
+   - AUTO: Standard question you can answer directly (order status, shipping policy, product FAQ)
+   - DRAFT: Non-standard question that needs a human review before sending (refunds, complaints)
+   - ESCALATE: High-risk issue requiring immediate human takeover (health reactions, legal threats, account risks)
 
-After your reply, output a JSON block on a new line in this exact format:
-{"handlingType": "refund|shipping|inquiry|needs_human", "confidence": 0-100}
-
-Use "needs_human" if the issue requires manual intervention (complex disputes, legal threats, VIP escalations).`
+2. Respond in JSON format ONLY:
+{
+  "escalation": "auto" | "draft" | "escalated",
+  "escalationReason": "reason if draft or escalated, null if auto",
+  "reply": "your reply to the customer (for auto), or draft reply (for draft), or null (for escalated)"
 }
 
-export function buildSupportUserPrompt(ticket: SupportTicket): string {
-  let orderContext = ''
-  if (ticket.order) {
-    const order = ticket.order
-    const items = order.line_items.map((i) => `${i.title} x${i.quantity}`).join(', ')
-    orderContext = `
+ESCALATION RULES (always ESCALATE for these):
+- Any mention of adverse health reactions, allergies, side effects
+- Threats to leave negative reviews or report to platforms
+- Amazon A-to-Z claims or chargeback threats
+- Customers identifying as high-value (KOL, influencer, wholesale)
+- Legal language or threats
 
-Order Context:
-- Order #${order.order_number}
-- Products: ${items}
-- Total: ${formatCurrency(order.total_price, order.currency)}
-- Status: ${order.fulfillment_status ?? 'unfulfilled'}
-- Placed: ${new Date(order.created_at).toLocaleDateString()}`
-  }
+DRAFT RULES (always DRAFT for these):
+- Refund or return requests
+- General complaints about product quality
+- Shipping delays with frustration expressed
 
-  return `Customer: ${ticket.customerName}
-Email: ${ticket.customerEmail}
-Ticket Type: ${ticket.type}
-Priority: ${ticket.priority}
-Channel: ${ticket.channel}
-${orderContext}
+AUTO RULES:
+- Order tracking ("where is my order", "tracking number")
+- Policy questions (returns, shipping times)
+- Product FAQs (ingredients, usage, dosage)
+- Simple positive feedback
 
-Customer Message:
-"${ticket.customerMessage}"
+Order data (if available) will be provided in the user message context.`;
 
-Generate a reply and classification JSON.`
-}
+export const SUPPORT_ESCALATION_MESSAGES: Record<EscalationLevel, string> = {
+  auto: 'AI replied automatically',
+  draft: 'AI drafted a reply — awaiting human approval before sending',
+  escalated: 'Escalated to human agent — AI will not respond',
+};
 
-export function buildReviewSystemPrompt(): string {
-  return `You are a brand voice specialist for ShopiFow, an online fashion brand known for quality and customer care.
+// ---- Review Reply prompt ----
 
-Your job is to generate authentic, brand-consistent replies to customer reviews.
+export const buildReviewReplyPrompt = (
+  platform: ReviewPlatform,
+  rating: number,
+  reviewContent: string,
+  productName: string,
+  language: string,
+  targetLanguage?: string,
+): string => {
+  const lang = targetLanguage || language;
+  const tone = rating >= 4 ? 'warm and grateful' : rating === 3 ? 'understanding and helpful' : 'empathetic and solution-focused';
 
-Guidelines:
-- For 5-star reviews: be warm and grateful, mention something specific from their review
-- For 4-star reviews: thank them and address their suggestion constructively
-- For 3-star reviews: acknowledge their concern, apologize for shortcomings, offer concrete improvements
-- For 1-2 star reviews: lead with a sincere apology, take responsibility, offer a specific resolution (replacement/refund), do NOT be defensive
-- Always stay positive and solution-focused
-- Keep replies to 2-4 sentences
-- Sign off as "— The ShopiFow Team"`
-}
+  return `You are a brand manager for a premium supplement e-commerce brand. Write a professional, authentic reply to this customer review.
 
-export function buildReviewUserPrompt(review: ProductReview): string {
-  return `Customer: ${review.customerName}
-Product: ${review.productName}
-Platform: ${review.platform}
-Rating: ${review.rating}/5 stars
-Sentiment: ${review.sentiment}
-${review.isHighPriority ? 'Priority: HIGH — this needs an especially careful, solution-focused response\n' : ''}
+Platform: ${platform}
+Product: ${productName}
+Rating: ${rating}/5
+Review language: ${language}
+Reply language: ${lang}
+Tone: ${tone}
+
 Review:
-"${review.reviewText}"
+"${reviewContent}"
 
-Generate a brand-appropriate reply.`
-}
+Guidelines:
+- Keep the reply under 80 words
+- Be genuine, not corporate-sounding
+- For low ratings (1-2): acknowledge the issue, apologize sincerely, offer to resolve
+- For medium ratings (3): thank them, address any concerns mentioned
+- For high ratings (4-5): express genuine gratitude, reinforce the brand promise
+- Never make medical claims
+- Reply in ${lang} language only
+- Do NOT include any JSON, just write the reply text directly`;
+};
 
-// n8n workflow explanation for the "How it works" modal
-export const SUPPORT_WORKFLOW_EXPLANATION = {
-  title: 'AI Support — How It Works',
-  prompt: buildSupportSystemPrompt(),
-  n8nLogic: `In a real deployment, this workflow is triggered via:
-1. Shopify Webhook → n8n receives new order/message event
-2. n8n fetches full order context from Shopify Admin API
-3. n8n calls OpenRouter API (Claude) with the system prompt + order context
-4. Confidence < 70% → ticket is flagged for human review in Slack/email
-5. High confidence → draft reply is sent to a queue for agent review before sending`,
-  extension: `To scale: add Twilio for SMS notifications, integrate Gorgias/Zendesk, set up SLA escalation timers, and connect Shopify customer metafields for VIP routing.`,
-}
+// ---- Workflow explanation prompts (for Automation tab) ----
 
-export const REVIEW_WORKFLOW_EXPLANATION = {
-  title: 'Review Reply — How It Works',
-  prompt: buildReviewSystemPrompt(),
-  n8nLogic: `In a real deployment:
-1. Review platform webhook → n8n triggers on new review
-2. n8n classifies sentiment and rating
-3. 1-2 star reviews → immediate Slack alert + AI draft reply
-4. 4-5 star reviews → auto-queue for batch reply
-5. All replies require one-click approval before publishing`,
-  extension: `To scale: connect Judge.me or Okendo webhooks, add multi-language support for international stores, and track reply performance metrics in a dashboard.`,
-}
+export const WORKFLOW_DESCRIPTIONS = {
+  orderSync: {
+    name: 'Order Sync to Pinecone',
+    description: 'Hourly: fetches new Shopify orders and upserts them into Pinecone vector index so the support agent can look up real order data.',
+    trigger: 'Every hour (cron)',
+    steps: [
+      { id: 's1', name: 'Cron Trigger', description: 'Fires every hour' },
+      { id: 's2', name: 'Fetch Shopify Orders', description: 'HTTP GET to Shopify Admin API' },
+      { id: 's3', name: 'Format Documents', description: 'Flatten order fields into text chunks' },
+      { id: 's4', name: 'Embed & Upsert', description: 'OpenAI embeddings → Pinecone upsert' },
+    ],
+  },
+  supportChat: {
+    name: 'Support Chat RAG Agent',
+    description: 'Webhook: receives chat message, classifies escalation level, retrieves order context from Pinecone, and returns a structured JSON reply.',
+    trigger: 'POST /webhook/support-chat',
+    steps: [
+      { id: 's1', name: 'Webhook Receive', description: 'Accept POST with message + source' },
+      { id: 's2', name: 'RAG Retrieval', description: 'Query Pinecone for relevant order data' },
+      { id: 's3', name: 'AI Classification', description: 'Claude classifies: auto/draft/escalate' },
+      { id: 's4', name: 'Format Response', description: 'Return JSON with reply and escalation' },
+    ],
+  },
+  reviewReply: {
+    name: 'Review Reply Generator',
+    description: 'Webhook: takes a review object, generates a brand-voice reply in the appropriate language via OpenRouter Claude.',
+    trigger: 'POST /webhook/review-reply',
+    steps: [
+      { id: 's1', name: 'Webhook Receive', description: 'Accept review data with language' },
+      { id: 's2', name: 'Build Prompt', description: 'Format review + brand guidelines prompt' },
+      { id: 's3', name: 'Claude Generate', description: 'OpenRouter → claude-sonnet-4-6' },
+      { id: 's4', name: 'Return Reply', description: 'Return reply text in requested language' },
+    ],
+  },
+};

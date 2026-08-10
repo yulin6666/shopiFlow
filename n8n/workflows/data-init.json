@@ -1,0 +1,253 @@
+{
+  "name": "ShopiFow - Data Init (Pinecone)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "data-init",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 400],
+      "webhookId": "data-init"
+    },
+    {
+      "parameters": {
+        "resource": "order",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 50,
+        "options": { "status": "any" },
+        "authentication": "accessToken"
+      },
+      "id": "shopify-orders",
+      "name": "Get Shopify Orders",
+      "type": "n8n-nodes-base.shopify",
+      "typeVersion": 1,
+      "position": [480, 240],
+      "credentials": {
+        "shopifyAccessTokenApi": { "id": "shopify-access-token", "name": "Shopify Access Token" }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "product",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 50,
+        "authentication": "accessToken"
+      },
+      "id": "shopify-products",
+      "name": "Get Shopify Products",
+      "type": "n8n-nodes-base.shopify",
+      "typeVersion": 1,
+      "position": [480, 400],
+      "credentials": {
+        "shopifyAccessTokenApi": { "id": "shopify-access-token", "name": "Shopify Access Token" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const docs = [];\nfor (const item of $input.all()) {\n  const o = item.json;\n  const lineItems = (o.line_items || []).map(li => `${li.title} x${li.quantity}`).join(', ');\n  const tracking = (o.fulfillments || []).map(f => f.tracking_number).filter(Boolean).join(', ') || 'N/A';\n  docs.push({ json: {\n    text: `Order ${o.name} | Platform: Shopify | Customer: ${o.email || 'N/A'} | Products: ${lineItems || 'N/A'} | Total: ${o.currency} ${o.total_price} | Status: ${o.fulfillment_status || 'unfulfilled'} | Financial: ${o.financial_status} | Tracking: ${tracking} | Created: ${o.created_at}`,\n    metadata: {\n      id: `shopify-order-${o.id}`,\n      platform: 'shopify',\n      type: 'order',\n      source: 'live',\n      orderId: String(o.name),\n      customer: o.email || '',\n      status: o.fulfillment_status || 'unfulfilled',\n      financialStatus: o.financial_status || '',\n      total: String(o.total_price || ''),\n      currency: o.currency || 'USD'\n    }\n  }});\n}\nreturn docs;"
+      },
+      "id": "format-orders",
+      "name": "Format Orders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const docs = [];\nfor (const item of $input.all()) {\n  const p = item.json;\n  const desc = (p.body_html || '').replace(/<[^>]*>/g, '').substring(0, 300);\n  const variants = (p.variants || []).map(v => `${v.title}: $${v.price} SKU:${v.sku || 'N/A'} Stock:${v.inventory_quantity ?? 'N/A'}`).join('; ');\n  docs.push({ json: {\n    text: `Product: ${p.title} | Platform: Shopify | Type: ${p.product_type || 'N/A'} | Vendor: ${p.vendor || 'N/A'} | Description: ${desc || 'N/A'} | Variants: ${variants || 'N/A'} | Tags: ${p.tags || 'N/A'}`,\n    metadata: {\n      id: `shopify-product-${p.id}`,\n      platform: 'shopify',\n      type: 'product',\n      source: 'live',\n      productId: String(p.id),\n      title: p.title || '',\n      vendor: p.vendor || '',\n      productType: p.product_type || '',\n      tags: p.tags || ''\n    }\n  }});\n}\nreturn docs;"
+      },
+      "id": "format-products",
+      "name": "Format Products",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const docs = [];\n\nconst amazonOrders = [\n  { orderId: 'AMZ-10011', customer: 'Sarah Mitchell', products: 'Omega-3 Fish Oil 1000mg x2', total: '49.98', status: 'delivered' },\n  { orderId: 'AMZ-10022', customer: 'David Kim', products: 'Vitamin D3 5000IU x1', total: '24.99', status: 'return_requested' },\n  { orderId: 'AMZ-10033', customer: 'Jennifer Lopez', products: 'Collagen Peptides 500g x1', total: '59.99', status: 'shipped' },\n  { orderId: 'AMZ-10044', customer: 'Michael Chen', products: 'Magnesium Glycinate x3', total: '74.97', status: 'delivered' },\n  { orderId: 'AMZ-10055', customer: 'Emma Wilson', products: 'Probiotic 50B CFU x1', total: '34.99', status: 'pending' }\n];\namazonOrders.forEach(o => {\n  docs.push({ json: {\n    text: `Order ${o.orderId} | Platform: Amazon | Customer: ${o.customer} | Products: ${o.products} | Total: USD ${o.total} | Status: ${o.status}`,\n    metadata: { id: `amazon-order-${o.orderId}`, platform: 'amazon', type: 'order', source: 'mock', orderId: o.orderId, customer: o.customer, status: o.status, total: o.total, currency: 'USD' }\n  }});\n});\n\nconst tiktokOrders = [\n  { orderId: 'TT-20011', customer: 'Lily Zhang', products: 'Collagen Gummies x2', total: '39.98', status: 'shipped', note: '3-star review packaging damaged' },\n  { orderId: 'TT-20022', customer: 'Kevin Park', products: 'Apple Cider Vinegar Gummies x1', total: '19.99', status: 'delivered', note: '5-star' },\n  { orderId: 'TT-20033', customer: 'Mia Johnson', products: 'Biotin 10000mcg x2', total: '29.98', status: 'refund_requested', note: '' },\n  { orderId: 'TT-20044', customer: 'Ryan Lee', products: 'Ashwagandha 600mg x1', total: '27.99', status: 'delivered', note: '4-star' },\n  { orderId: 'TT-20055', customer: 'Sophia Wang', products: 'Elderberry Syrup x3', total: '44.97', status: 'processing', note: '' }\n];\ntiktokOrders.forEach(o => {\n  docs.push({ json: {\n    text: `Order ${o.orderId} | Platform: TikTok Shop | Customer: ${o.customer} | Products: ${o.products} | Total: USD ${o.total} | Status: ${o.status}${o.note ? ' | Note: ' + o.note : ''}`,\n    metadata: { id: `tiktok-order-${o.orderId}`, platform: 'tiktok', type: 'order', source: 'mock', orderId: o.orderId, customer: o.customer, status: o.status, total: o.total, currency: 'USD' }\n  }});\n});\n\nconst faqs = [\n  { id: 'faq-return-policy', category: 'returns', text: 'Return Policy: We accept returns within 30 days of purchase. Items must be unopened and in original condition. Refunds processed within 5-7 business days.' },\n  { id: 'faq-shipping', category: 'shipping', text: 'Shipping Policy: Standard shipping 5-7 business days ($4.99). Express shipping 2-3 business days ($12.99). Free standard shipping on orders over $50. We ship to US, Canada, UK, and Australia.' },\n  { id: 'faq-product-usage', category: 'usage', text: 'Product Usage: Take supplements with food and water. Do not exceed recommended dosage. Consult your doctor if pregnant, nursing, or on medication.' },\n  { id: 'faq-subscription', category: 'subscription', text: 'Subscription: Save 15% with auto-ship every 30/60/90 days. Cancel anytime before next shipment.' },\n  { id: 'faq-ingredients', category: 'ingredients', text: 'Ingredients & Allergens: All products are third-party tested, non-GMO, and gluten-free. Some products contain fish (Omega-3), dairy, or soy.' }\n];\nfaqs.forEach(f => {\n  docs.push({ json: {\n    text: f.text,\n    metadata: { id: f.id, platform: 'all', type: 'faq', source: 'policy', category: f.category, status: '', customer: '', total: '' }\n  }});\n});\n\nreturn docs;"
+      },
+      "id": "generate-mock",
+      "name": "Generate Mock Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 560]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2,
+        "options": {}
+      },
+      "id": "merge-shopify",
+      "name": "Merge Shopify",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [960, 320]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 2,
+        "options": {}
+      },
+      "id": "merge-all",
+      "name": "Merge All",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [960, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"text-embedding-3-small\",\n  \"input\": \"{{ $json.text }}\"\n}",
+        "options": {}
+      },
+      "id": "get-embeddings",
+      "name": "Get Embeddings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 500],
+      "credentials": {
+        "openAiApi": { "id": "openai-api", "name": "OpenAI API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 合并 embedding 和原始数据\nconst items = $input.all();\nreturn items.map(item => ({\n  json: {\n    embedding: item.json.data[0].embedding,\n    text: item.json.text,\n    metadata: item.json.metadata\n  }\n}));"
+      },
+      "id": "merge-embedding",
+      "name": "Merge Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 500]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate",
+      "name": "Aggregate",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1440, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate 输出: { data: [{ embedding: [...] }, ...] }\n// 原始数据从 Merge All 节点获取（顺序一致）\nconst embedItems = $input.first().json.data;\nconst origItems = $('Merge All').all();\n\nconst vectors = embedItems.map((emb, idx) => {\n  const orig = origItems[idx].json;\n  return {\n    id: orig.metadata.id,\n    values: emb.embedding,\n    metadata: {\n      text: orig.text,\n      ...orig.metadata\n    }\n  };\n});\n\nreturn [{ json: { vectors } }];"
+      },
+      "id": "build-vectors",
+      "name": "Build Vectors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://shopiflow-doc-msas7gl.svc.aped-4627-b74a.pinecone.io/vectors/upsert",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ vectors: $json.vectors, namespace: '' }) }}",
+        "options": {}
+      },
+      "id": "upsert-pinecone",
+      "name": "Upsert to Pinecone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1920, 500],
+      "credentials": {
+        "pineconeApi": { "id": "pinecone-api", "name": "Pinecone API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const vectorCount = $json.upsertedCount || $('Build Vectors').first().json.vectors.length;\nconst allItems = $('Aggregate').first().json.data;\n\nreturn [{ json: {\n  status: 'success',\n  inserted: vectorCount,\n  breakdown: {\n    shopifyOrders: allItems.filter(i => i?.metadata?.type === 'order' && i?.metadata?.platform === 'shopify').length,\n    shopifyProducts: allItems.filter(i => i?.metadata?.type === 'product').length,\n    amazonOrders: 5,\n    tiktokOrders: 5,\n    faqDocs: 5\n  }\n}}];"
+      },
+      "id": "build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2160, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2400, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Get Shopify Orders", "type": "main", "index": 0 },
+          { "node": "Get Shopify Products", "type": "main", "index": 0 },
+          { "node": "Generate Mock Data", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Shopify Orders": {
+      "main": [[{ "node": "Format Orders", "type": "main", "index": 0 }]]
+    },
+    "Get Shopify Products": {
+      "main": [[{ "node": "Format Products", "type": "main", "index": 0 }]]
+    },
+    "Format Orders": {
+      "main": [[{ "node": "Merge Shopify", "type": "main", "index": 0 }]]
+    },
+    "Format Products": {
+      "main": [[{ "node": "Merge Shopify", "type": "main", "index": 1 }]]
+    },
+    "Merge Shopify": {
+      "main": [[{ "node": "Merge All", "type": "main", "index": 0 }]]
+    },
+    "Generate Mock Data": {
+      "main": [[{ "node": "Merge All", "type": "main", "index": 1 }]]
+    },
+    "Merge All": {
+      "main": [[{ "node": "Get Embeddings", "type": "main", "index": 0 }]]
+    },
+    "Get Embeddings": {
+      "main": [[{ "node": "Merge Embedding", "type": "main", "index": 0 }]]
+    },
+    "Merge Embedding": {
+      "main": [[{ "node": "Aggregate", "type": "main", "index": 0 }]]
+    },
+    "Aggregate": {
+      "main": [[{ "node": "Build Vectors", "type": "main", "index": 0 }]]
+    },
+    "Build Vectors": {
+      "main": [[{ "node": "Upsert to Pinecone", "type": "main", "index": 0 }]]
+    },
+    "Upsert to Pinecone": {
+      "main": [[{ "node": "Build Response", "type": "main", "index": 0 }]]
+    },
+    "Build Response": {
+      "main": [[{ "node": "Respond Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "versionId": "shopiflow-data-init-v7"
+}

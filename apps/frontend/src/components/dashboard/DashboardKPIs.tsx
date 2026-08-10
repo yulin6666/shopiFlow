@@ -1,70 +1,69 @@
-import { DashboardStats } from '@/types'
-import { Card, CardContent } from '@/components/ui/Card'
-import { formatCurrency } from '@/lib/utils'
-import { ShoppingBag, DollarSign, MessageSquare, Zap } from 'lucide-react'
+import Card from '@/components/ui/Card';
+import { DashboardKPI } from '@/types';
 
-interface DashboardKPIsProps {
-  stats: DashboardStats
-}
+const kpis: DashboardKPI[] = [
+  {
+    label: 'Auto-Handled Tickets',
+    value: 42,
+    change: '+18% vs last week',
+    trend: 'up',
+    description: 'Support requests resolved without human review',
+  },
+  {
+    label: 'Time Saved Today',
+    value: '3.5 hrs',
+    change: 'vs manual processing',
+    trend: 'up',
+    description: 'Based on avg 5 min per ticket × 42 tickets',
+  },
+  {
+    label: 'Review Reply Rate',
+    value: '94%',
+    change: '+31% vs last month',
+    trend: 'up',
+    description: 'Reviews with AI-generated replies sent',
+  },
+  {
+    label: 'Escalation Rate',
+    value: '8%',
+    change: '-3% vs last week',
+    trend: 'down',
+    description: 'Tickets requiring human intervention',
+  },
+];
 
-const KPI_CONFIG = [
-  {
-    key: 'todayOrders' as const,
-    label: "Today's Orders",
-    icon: ShoppingBag,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    format: (v: number) => v.toString(),
-    source: 'Shopify live',
-  },
-  {
-    key: 'totalRevenue' as const,
-    label: 'Total Revenue (30d)',
-    icon: DollarSign,
-    color: 'text-green-600',
-    bg: 'bg-green-50',
-    format: (v: number) => formatCurrency(v),
-    source: 'Shopify live',
-  },
-  {
-    key: 'pendingTickets' as const,
-    label: 'Pending Tickets',
-    icon: MessageSquare,
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    format: (v: number) => v.toString(),
-    source: 'Auto-generated',
-  },
-  {
-    key: 'aiHandlingRate' as const,
-    label: 'AI Auto-Handle Rate',
-    icon: Zap,
-    color: 'text-purple-600',
-    bg: 'bg-purple-50',
-    format: (v: number) => `${v}%`,
-    source: 'Demo metric',
-  },
-]
+const trendIcon = (trend: 'up' | 'down' | 'neutral') => {
+  if (trend === 'up') {
+    return (
+      <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+    );
+  }
+  if (trend === 'down') {
+    return (
+      <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+      </svg>
+    );
+  }
+  return null;
+};
 
-export function DashboardKPIs({ stats }: DashboardKPIsProps) {
+export default function DashboardKPIs() {
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-      {KPI_CONFIG.map(({ key, label, icon: Icon, color, bg, format, source }) => (
-        <Card key={key}>
-          <CardContent className="pt-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-2xl font-bold mt-1">{format(stats[key])}</p>
-                <p className="text-xs text-muted-foreground mt-1">{source}</p>
-              </div>
-              <div className={`p-2 rounded-lg ${bg}`}>
-                <Icon className={`w-4 h-4 ${color}`} />
-              </div>
-            </div>
-          </CardContent>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {kpis.map((kpi) => (
+        <Card key={kpi.label} className="hover:shadow-md transition-shadow">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{kpi.value}</p>
+          <div className="mt-1 flex items-center gap-1">
+            {trendIcon(kpi.trend)}
+            <span className="text-xs text-gray-500">{kpi.change}</span>
+          </div>
+          <p className="mt-2 text-xs text-gray-400 leading-relaxed">{kpi.description}</p>
         </Card>
       ))}
     </div>
-  )
+  );
 }

@@ -1,22 +1,45 @@
-import { cn } from '@/lib/utils'
+import React from 'react';
+import { cn } from '@/lib/utils';
 
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+}
+
+const paddingClasses: Record<string, string> = {
+  none: '',
+  sm: 'p-3',
+  md: 'p-4',
+  lg: 'p-6',
+};
+
+export default function Card({ children, className, padding = 'md' }: CardProps) {
   return (
     <div
-      className={cn('rounded-xl border bg-card text-card-foreground shadow-sm', className)}
-      {...props}
-    />
-  )
+      className={cn(
+        'bg-white rounded-xl border border-gray-200 shadow-sm',
+        paddingClasses[padding],
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
-export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex flex-col space-y-1 p-5', className)} {...props} />
+export function CardHeader({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('flex items-center justify-between mb-4', className)}>
+      {children}
+    </div>
+  );
 }
 
-export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn('font-semibold text-sm leading-none', className)} {...props} />
-}
-
-export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-5 pb-5', className)} {...props} />
+export function CardTitle({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <h3 className={cn('text-sm font-semibold text-gray-900', className)}>
+      {children}
+    </h3>
+  );
 }

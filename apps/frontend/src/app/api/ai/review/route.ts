@@ -1,50 +1,57 @@
-import { NextRequest } from 'next/server'
-import { buildReviewSystemPrompt, buildReviewUserPrompt } from '@/lib/prompts'
-import { ProductReview } from '@/types'
+import { NextRequest, NextResponse } from 'next/server';
+import axios from 'axios';
+import { ReviewPlatform } from '@/types';
 
-export const runtime = 'nodejs'
+const N8N_WEBHOOK = process.env.N8N_WEBHOOK_BASE_URL;
 
 export async function POST(req: NextRequest) {
   try {
-    const { review }: { review: ProductReview } = await req.json()
+    const body = await req.json();
+    const { reviewId, platform, rating, title, content, productTitle, reviewerName } = body as {
+      reviewId?: string | number;
+      platform: ReviewPlatform;
+      rating: number;
+      title?: string;
+      content: string;
+      productTitle: string;
+      reviewerName?: string;
+    };
 
-    const systemPrompt = buildReviewSystemPrompt()
-    const userPrompt = buildReviewUserPrompt(review)
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://shopiflow.demo',
-        'X-Title': 'ShopiFow Demo',
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4-6',
-        stream: true,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        max_tokens: 400,
-        temperature: 0.7,
-      }),
-    })
-
-    if (!response.ok) {
-      const err = await response.text()
-      return new Response(JSON.stringify({ error: `OpenRouter error: ${err}` }), { status: 500 })
+    if (!content?.trim() || !platform || !productTitle) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    return new Response(response.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+    if (!N8N_WEBHOOK) {
+      return NextResponse.json({ error: 'N8N_WEBHOOK_BASE_URL not configured' }, { status: 500 });
+    }
+
+    // Call n8n webhook
+    const n8nResponse = await axios.post(
+      `${N8N_WEBHOOK}/webhook/judgeme-review`,
+      {
+        reviewId: reviewId || Date.now(),
+        rating,
+        title: title || '',
+        body: content,
+        productTitle,
+        reviewerName: reviewerName || 'Customer',
+        platform,
       },
-    })
-  } catch (err) {
-    console.error('AI review route error:', err)
-    return new Response(JSON.stringify({ error: 'AI processing failed' }), { status: 500 })
+      { timeout: 30000 },
+    );
+
+    const data = n8nResponse.data;
+
+    // n8n returns: { status: 'auto_replied' | 'needs_approval', rating, reply, reviewId, productTitle, reviewerName }
+    return NextResponse.json({
+      reply: data.reply || '',
+      status: data.status || 'auto_replied',
+      needsApproval: data.status === 'needs_approval',
+      reviewId: data.reviewId,
+    });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Internal server error';
+    console.error('[review API]', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

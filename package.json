@@ -2,13 +2,17 @@
   "name": "shopiflow",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
+    "setup": "./setup.sh",
     "dev": "npm --workspace=apps/frontend run dev",
     "build": "npm --workspace=apps/frontend run build",
     "start": "npm --workspace=apps/frontend run start",
     "lint": "npm --workspace=apps/frontend run lint"
   },
-  "workspaces": [
-    "apps/frontend"
-  ]
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
 }

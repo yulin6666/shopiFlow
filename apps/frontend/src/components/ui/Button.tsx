@@ -1,54 +1,62 @@
-import { cn } from '@/lib/utils'
-
-type ButtonVariant = 'default' | 'outline' | 'ghost' | 'destructive'
-type ButtonSize = 'sm' | 'md' | 'lg'
+import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant
-  size?: ButtonSize
-  loading?: boolean
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+  children: React.ReactNode;
 }
 
-const variantStyles: Record<ButtonVariant, string> = {
-  default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-  outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-  ghost: 'hover:bg-accent hover:text-accent-foreground',
-  destructive: 'bg-red-600 text-white hover:bg-red-700',
-}
+const variantClasses: Record<string, string> = {
+  primary: 'bg-green-600 text-white hover:bg-green-700 disabled:bg-green-300',
+  secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 disabled:opacity-50',
+  ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 disabled:opacity-50',
+  danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300',
+};
 
-const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-xs',
-  md: 'h-9 px-4 text-sm',
-  lg: 'h-10 px-6 text-sm',
-}
+const sizeClasses: Record<string, string> = {
+  sm: 'px-3 py-1.5 text-xs',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-6 py-3 text-base',
+};
 
-export function Button({
-  className,
-  variant = 'default',
-  size = 'md',
-  loading,
-  disabled,
+export default function Button({
   children,
+  variant = 'primary',
+  size = 'md',
+  loading = false,
+  className,
+  disabled,
   ...props
 }: ButtonProps) {
   return (
     <button
-      disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
-        variantStyles[variant],
-        sizeStyles[size],
-        className
+        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2',
+        variantClasses[variant],
+        sizeClasses[size],
+        className,
       )}
+      disabled={disabled || loading}
       {...props}
     >
       {loading && (
-        <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+        <svg
+          className="animate-spin h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
         </svg>
       )}
       {children}
     </button>
-  )
+  );
 }

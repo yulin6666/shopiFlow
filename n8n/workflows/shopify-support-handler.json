@@ -1,0 +1,274 @@
+{
+  "name": "ShopiFow - Shopify Support (Direct)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopify-support",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Shopify Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "shopify-support"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || '';\nconst ticketId = body.ticketId || Date.now();\nconst customerName = body.customerName || 'Customer';\nconst customerEmail = body.customerEmail || '';\nconst platform = body.platform || 'shopify';\nconst orderId = body.orderId || null;\n\nreturn [{\n  json: {\n    ticketId,\n    customerName,\n    customerEmail,\n    platform,\n    orderId,\n    chatInput: 'Platform: ' + platform + '\\nMessage: ' + message + '\\nOrder ID: ' + (orderId || 'None')\n  }\n}];"
+      },
+      "id": "parse-input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a customer support AI for a Shopify store.\n\nIMPORTANT INSTRUCTIONS:\n1. ALWAYS use the Shopify Data tool to query the knowledge base before answering questions about products, orders, inventory, or pricing.\n2. After getting results from the tool, CAREFULLY FILTER the data based on what the customer asked:\n   - If asking about a specific brand/vendor (e.g., \"NIKE products\"), ONLY include records where metadata.vendor matches OR the product name contains that brand\n   - If asking about products, ONLY use records where metadata.type=\"product\"\n   - If asking about orders, ONLY use records where metadata.type=\"order\"\n   - IGNORE irrelevant results even if they appear in the tool output\n3. DO NOT make up prices, stock levels, or product details - only use information from the filtered results\n4. After filtering and answering, classify the message and respond in JSON format\n\nClassify into ONE of three categories:\n\n1. \"auto\" - Standard questions (70-80% of messages):\n   - Order tracking / shipping status\n   - Product inquiries / availability\n   - Return & exchange policy\n   - General store info\n\n2. \"draft\" - Low-risk but needs human review:\n   - Refund requests\n   - Product complaints\n   - Order modifications\n   - Discount/coupon inquiries\n\n3. \"escalate\" - High-risk, immediate human takeover:\n   - Health complaints / side effects\n   - Legal threats\n   - Chargebacks or payment disputes\n   - VIP / high-value customers\n   - Angry / emotional messages\n\nYou MUST respond in JSON format only:\n{\n  \"classification\": \"auto|draft|escalate\",\n  \"reason\": \"brief explanation\",\n  \"risk_level\": \"low|medium|high\",\n  \"reply\": \"draft reply text (for auto and draft only, null for escalate)\"\n}"
+        }
+      },
+      "id": "ai-agent",
+      "name": "Shopify AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4-6",
+        "options": {}
+      },
+      "id": "llm-model",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [620, 520],
+      "credentials": {
+        "openAiApi": { "id": "openrouter-openai-api", "name": "OpenRouter (OpenAI-compatible)" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this tool to look up Shopify order information including shipping status, tracking numbers, order details, and customer purchase history. Search by order number or customer email.",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "shopiflow-doc",
+          "mode": "list",
+          "cachedResultName": "shopiflow-doc"
+        },
+        "topK": 3,
+        "options": {}
+      },
+      "id": "pinecone-tool",
+      "name": "Shopify Data (Pinecone)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1,
+      "position": [820, 520],
+      "credentials": {
+        "pineconeApi": { "id": "pinecone-api", "name": "Pinecone API" }
+      }
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "embeddings",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [820, 680],
+      "credentials": {
+        "openAiApi": { "id": "openai-api", "name": "OpenAI API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || '{}';\nlet parsed;\ntry {\n  const cleaned = agentOutput.replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(match ? match[0] : cleaned);\n} catch {\n  parsed = { classification: 'escalate', reason: 'parse error', risk_level: 'high', reply: null };\n}\n\nconst ticket = $('Parse Input').first().json;\nconst classification = parsed.classification || 'escalate';\n\nlet status;\nif (classification === 'auto') status = 'auto_replied';\nelse if (classification === 'draft') status = 'needs_review';\nelse status = 'escalated';\n\nreturn [{\n  json: {\n    status,\n    classification,\n    reason: parsed.reason || '',\n    riskLevel: parsed.risk_level || 'high',\n    reply: parsed.reply || null,\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput\n  }\n}];"
+      },
+      "id": "merge-result",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "auto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "auto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "draft",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "draft"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "escalate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "escalate"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "route-by-classification",
+      "name": "Route by Classification",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: $json.reply, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
+        "options": {}
+      },
+      "id": "respond-auto",
+      "name": "Respond (Auto)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1440, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: $json.reply, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
+        "options": {}
+      },
+      "id": "respond-draft",
+      "name": "Respond (Draft)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1440, 300]
+    },
+    {
+      "parameters": {
+        "content": "🚨 **Shopify Support Escalation**\n\n**Ticket ID:** {{ $json.ticketId }}\n**Customer:** {{ $json.customerName }} ({{ $json.customerEmail }})\n**Platform:** {{ $json.platform }}\n**Risk Level:** {{ $json.riskLevel }}\n\n**Reason:** {{ $json.reason }}\n\n**Original Message:**\n```\n{{ $json.originalMessage }}\n```\n\n⚠️ This ticket requires immediate human attention.",
+        "options": {}
+      },
+      "id": "slack-notification",
+      "name": "Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1440, 500],
+      "credentials": {
+        "slackApi": { "id": "slack-api", "name": "Slack API" }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: null, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
+        "options": {}
+      },
+      "id": "respond-escalate",
+      "name": "Respond (Escalate)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1680, 500]
+    }
+  ],
+  "connections": {
+    "Shopify Webhook": {
+      "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
+    },
+    "Parse Input": {
+      "main": [[{ "node": "Shopify AI Agent", "type": "main", "index": 0 }]]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [[{ "node": "Shopify AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Shopify Data (Pinecone)": {
+      "ai_tool": [[{ "node": "Shopify AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [[{ "node": "Shopify Data (Pinecone)", "type": "ai_embedding", "index": 0 }]]
+    },
+    "Shopify AI Agent": {
+      "main": [[{ "node": "Parse Classification", "type": "main", "index": 0 }]]
+    },
+    "Parse Classification": {
+      "main": [[{ "node": "Route by Classification", "type": "main", "index": 0 }]]
+    },
+    "Route by Classification": {
+      "main": [
+        [{ "node": "Respond (Auto)", "type": "main", "index": 0 }],
+        [{ "node": "Respond (Draft)", "type": "main", "index": 0 }],
+        [{ "node": "Slack Alert", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack Alert": {
+      "main": [[{ "node": "Respond (Escalate)", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-06T00:00:00.000Z",
+  "versionId": "shopiflow-shopify-support-v3"
+}

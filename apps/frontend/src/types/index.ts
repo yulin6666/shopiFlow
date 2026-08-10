@@ -1,113 +1,192 @@
-// Shopify API types
+// ---- Shopify ----
+
 export interface ShopifyOrder {
-  id: number
-  order_number: number
-  created_at: string
-  updated_at: string
-  financial_status: 'pending' | 'authorized' | 'partially_paid' | 'paid' | 'partially_refunded' | 'refunded' | 'voided'
-  fulfillment_status: 'fulfilled' | 'partial' | 'restocked' | null
-  total_price: string
-  currency: string
-  email: string
-  customer: {
-    id: number
-    first_name?: string
-    last_name?: string
-    email?: string
-  } | null
-  billing_address?: {
-    first_name?: string
-    last_name?: string
-    name?: string
-    city?: string
-    country?: string
-  }
-  line_items: ShopifyLineItem[]
-  shipping_address?: {
-    first_name?: string
-    last_name?: string
-    name?: string
-    city: string
-    country: string
-  }
+  id: number;
+  name: string; // e.g. "#1001"
+  email: string;
+  financial_status: string;
+  fulfillment_status: string | null;
+  total_price: string;
+  currency: string;
+  created_at: string;
+  line_items: ShopifyLineItem[];
+  shipping_address?: ShopifyAddress;
+  tracking_number?: string;
 }
 
 export interface ShopifyLineItem {
-  id: number
-  title: string
-  quantity: number
-  price: string
-  sku: string
-  variant_title: string | null
+  id: number;
+  title: string;
+  quantity: number;
+  price: string;
+  variant_title: string | null;
+}
+
+export interface ShopifyAddress {
+  first_name: string;
+  last_name: string;
+  address1: string;
+  city: string;
+  province: string;
+  country: string;
+  zip: string;
 }
 
 export interface ShopifyProduct {
-  id: number
-  title: string
-  status: string
-  variants: {
-    id: number
-    price: string
-    inventory_quantity: number
-  }[]
-  image?: { src: string }
+  id: number;
+  title: string;
+  body_html: string;
+  vendor: string;
+  product_type: string;
+  status: string;
+  variants: ShopifyVariant[];
+  images: ShopifyImage[];
+  tags: string;
 }
 
-// Support ticket types
-export type TicketType = 'shipping_inquiry' | 'return_request' | 'product_complaint' | 'order_delay' | 'general'
-export type TicketPriority = 'high' | 'medium' | 'low'
-export type TicketChannel = 'Shopify' | 'Amazon' | 'TikTok Shop'
-export type TicketStatus = 'open' | 'pending' | 'resolved'
-
-export interface SupportTicket {
-  id: string
-  type: TicketType
-  priority: TicketPriority
-  channel: TicketChannel
-  status: TicketStatus
-  subject: string
-  customerMessage: string
-  customerName: string
-  customerEmail: string
-  createdAt: string
-  order?: ShopifyOrder
+export interface ShopifyVariant {
+  id: number;
+  title: string;
+  price: string;
+  inventory_quantity: number;
+  sku: string;
 }
 
-// AI response types
-export type AIHandlingType = 'refund' | 'shipping' | 'inquiry' | 'needs_human'
-
-export interface AISupportResponse {
-  reply: string
-  handlingType: AIHandlingType
-  confidence: number
+export interface ShopifyImage {
+  id: number;
+  src: string;
+  alt: string | null;
 }
 
-// Review types
-export type ReviewSentiment = 'positive' | 'neutral' | 'negative'
-export type ReviewPlatform = 'Shopify' | 'Amazon' | 'Google'
+// ---- Support Chat ----
 
-export interface ProductReview {
-  id: string
-  platform: ReviewPlatform
-  rating: number
-  sentiment: ReviewSentiment
-  customerName: string
-  productName: string
-  reviewText: string
-  createdAt: string
-  isHighPriority: boolean
+export type MessageRole = 'user' | 'assistant';
+export type TicketSource = 'shopify' | 'amazon' | 'tiktok';
+export type EscalationLevel = 'auto' | 'draft' | 'escalated';
+
+export interface ChatMessage {
+  id: string;
+  role: MessageRole;
+  content: string;
+  timestamp: string;
+  source?: TicketSource;
+  escalation?: EscalationLevel;
+  escalationReason?: string;
+  draftReply?: string;
 }
 
-// Dashboard types
-export interface DashboardStats {
-  todayOrders: number
-  totalRevenue: number
-  pendingTickets: number
-  aiHandlingRate: number
+export interface SupportChatState {
+  messages: ChatMessage[];
+  isLoading: boolean;
+  sessionId: string | null;
 }
 
-export interface OrderTrend {
-  date: string
-  orders: number
-  revenue: number
+// ---- Reviews ----
+
+export type ReviewPlatform = 'shopify' | 'amazon' | 'tiktok';
+export type ReviewStatus = 'pending' | 'replied' | 'generating';
+
+export interface Review {
+  id: string;
+  platform: ReviewPlatform;
+  author: string;
+  rating: number; // 1-5
+  title: string;
+  content: string;
+  date: string;
+  productName: string;
+  language: string;
+  status: ReviewStatus;
+  generatedReply?: string;
+}
+
+// ---- Automation ----
+
+export type WorkflowStatus = 'idle' | 'running' | 'success' | 'error';
+
+export interface WorkflowStep {
+  id: string;
+  name: string;
+  description: string;
+  status: WorkflowStatus;
+}
+
+export interface AutomationWorkflow {
+  id: string;
+  name: string;
+  description: string;
+  trigger: string;
+  steps: WorkflowStep[];
+  lastRun?: string;
+  status: WorkflowStatus;
+  stats: {
+    totalRuns: number;
+    successRate: number;
+    avgDuration: string;
+  };
+}
+
+// ---- Dashboard KPIs ----
+
+export interface DashboardKPI {
+  label: string;
+  value: string | number;
+  change: string;
+  trend: 'up' | 'down' | 'neutral';
+  description: string;
+}
+
+export interface OrderTrendPoint {
+  date: string;
+  orders: number;
+  revenue: number;
+}
+
+// ---- Gorgias ----
+
+export interface GorgiasTicket {
+  id: number;
+  subject: string;
+  status: 'open' | 'closed' | 'pending';
+  channel: string;
+  source: TicketSource;
+  customerName: string;
+  customerEmail: string;
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+  isUnread: boolean;
+  // AI processing result (filled client-side after classification)
+  escalation?: EscalationLevel;
+  escalationReason?: string;
+  draftReply?: string;
+  aiProcessed?: boolean;
+}
+
+export interface GorgiasMessage {
+  id: number;
+  bodyText: string;
+  fromName: string;
+  fromAddress: string;
+  createdAt: string;
+}
+
+// ---- API Responses ----
+
+export interface ApiResponse<T> {
+  data: T;
+  error?: string;
+}
+
+export interface SupportQueryResponse {
+  reply: string;
+  escalation: EscalationLevel;
+  escalationReason?: string;
+  draftReply?: string;
+  source: TicketSource;
+}
+
+export interface ReviewReplyResponse {
+  reply: string;
+  language: string;
 }

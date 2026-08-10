@@ -1,245 +1,320 @@
-# ShopiFow — 搭建文档
+# ShopiFow — 部署文档
 
-> AI 驱动的 Shopify 电商自动化 Demo | n8n + OpenRouter + Next.js
-
----
-
-## 项目结构
-
-```
-shopiFlow/
-├── apps/
-│   └── frontend/          # Next.js 14 前端（主应用）
-│       ├── src/
-│       │   ├── app/        # App Router 页面 + API Routes
-│       │   │   ├── page.tsx              # Dashboard
-│       │   │   ├── support/page.tsx      # AI 客服中心
-│       │   │   ├── reviews/page.tsx      # Review 管理
-│       │   │   └── api/
-│       │   │       ├── shopify/orders/   # Shopify 订单 API
-│       │   │       ├── shopify/products/ # Shopify 产品 API
-│       │   │       ├── ai/support/       # AI 客服流式接口
-│       │   │       └── ai/review/        # AI Review 回复流式接口
-│       │   ├── components/ # UI 组件
-│       │   ├── lib/        # 工具函数、Shopify client、prompts
-│       │   └── types/      # TypeScript 类型定义
-├── n8n/
-│   └── workflows/          # n8n workflow JSON（可直接导入）
-│       ├── support-ticket-handler.json
-│       └── review-reply-generator.json
-├── docker-compose.yml      # n8n + PostgreSQL Docker 配置
-├── setup.sh                # 一键部署脚本
-├── railway.json            # Railway 部署配置
-└── .env.example            # 环境变量模板
-```
-
----
-
-## 快速开始（本地）
-
-### 前置条件
-
-| 工具 | 版本要求 | 安装 |
-|------|---------|------|
-| Node.js | >= 18 | https://nodejs.org |
-| Docker Desktop | 最新版 | https://www.docker.com |
-
-### 一键启动
+## 快速开始（本地，一键部署）
 
 ```bash
-# 克隆项目
-cd /path/to/shopiFlow
-
-# 给脚本加执行权限
+cd /Users/lindediannao/Documents/project/shopiFlow
 chmod +x setup.sh
-
-# 一键启动（会自动检查依赖、配置环境、启动 Docker、安装依赖）
 ./setup.sh
+# 按提示编辑 .env，填入 API keys
+npm run dev
 ```
 
-脚本完成后：
-
-```bash
-# 启动前端开发服务器
-cd apps/frontend && npm run dev
-```
-
-访问 http://localhost:3000
+打开浏览器：
+- 前端 → http://localhost:3000
+- n8n  → http://localhost:5678
 
 ---
 
-## 环境变量配置
+## 前置条件
 
-`.env` 文件（`setup.sh` 会自动从 `.env.example` 创建）：
+| 依赖 | 版本 | 安装方式 |
+|------|------|---------|
+| Node.js | >= 18 | `brew install node` 或 [nodejs.org](https://nodejs.org) |
+| Docker Desktop | 最新版 | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop) |
+| n8n starter kit | 已启动 | 路径: `/Users/lindediannao/Documents/project/n8n/self-hosted-ai-starter-kit` |
 
-```bash
-# OpenRouter API（支持 Claude 等模型）
-OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxx
+> setup.sh 会自动检测并启动 Docker 服务，无需手动操作。
 
-# Shopify Development Store
-SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
-SHOPIFY_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxx
+---
 
-# n8n（可选，用于 webhook 触发）
-N8N_WEBHOOK_BASE_URL=http://localhost:5678
+## 架构总览
 
-# PostgreSQL（Docker 内部使用，默认值即可）
-POSTGRES_USER=shopiflow
-POSTGRES_PASSWORD=shopiflow123
-POSTGRES_DB=shopiflow
+```
+真实生产流程（客服）:
+  Shopify/TikTok/Amazon 客户消息 → Gorgias → Webhook → n8n AI 分类
+                                                           ├─ 自动回复 (70-80%)
+                                                           ├─ 起草+审核 (低风险)
+                                                           └─ 人工接管 (高风险)
+
+真实生产流程（评论）:
+  Judge.me 评论 → Gorgias → Webhook → n8n AI 生成回复 → 返回
+
+Demo 简化流程:
+  前端模拟消息 → Next.js API → n8n webhook（或直连 OpenRouter）→ 前端显示
 ```
 
-### 如何获取 Shopify Access Token
+Browser (localhost:3000)
+  └── Next.js 14 App Router
+        ├── /              Dashboard — KPI + 趋势图 + 近期订单
+        ├── /support       客服工单 — Demo Chat 或 Gorgias 真实 tickets
+        ├── /reviews       评论回复 — Judge.me 真实数据或 mock
+        └── /automation    n8n 工作流可视化 + 模拟触发
 
-1. 进入 Shopify Development Store 后台
+        API Routes (服务端，隐藏所有 API Keys)
+        ├── POST /api/ai/support      → n8n webhook（降级: 直连 OpenRouter）
+        ├── POST /api/ai/review       → n8n webhook（降级: 直连 OpenRouter）
+        ├── GET  /api/reviews         → Judge.me API（降级: mock 数据）
+        ├── GET  /api/gorgias/tickets → Gorgias open tickets
+        ├── GET  /api/gorgias/reply   → 获取 ticket 消息
+        ├── POST /api/gorgias/reply   → 通过 Gorgias 发送回复
+        ├── GET  /api/shopify/orders
+        └── GET  /api/shopify/products
+
+n8n (localhost:5678) — 复用 self-hosted-ai-starter-kit Docker
+  ├── support-ticket-handler.json  Gorgias webhook: AI 3级分类（auto/draft/escalate）
+  └── review-reply-generator.json  Gorgias webhook: AI 生成评论回复
+
+PostgreSQL (port 5433) — 复用 starter kit postgres 容器
+  └── shopiflow_db.ai_processing_log（可选，n8n 执行日志）
+
+外部服务
+  ├── OpenRouter  Claude 模型调用
+  ├── Judge.me    Shopify 评论数据（可选）
+  └── Gorgias     多平台客服工单（可选）
+
+**注意：**
+- Demo 不需要 Pinecone（原设计的 RAG 查询订单功能已移除，订单信息直接来自 Gorgias ticket meta）
+- 不需要同步 Shopify 订单到向量数据库
+- Gorgias webhook 是真实生产架构，Demo 里前端直接调 n8n webhook 测试
+```
+
+---
+
+## 第一步：获取 API Keys
+
+### 1. OpenRouter（必填）
+
+用于调用 Claude 模型。
+
+1. 访问 [openrouter.ai](https://openrouter.ai) → **Sign up**（邮箱注册，免费）
+2. 登录后进 **Keys** → **Create key**
+3. 复制 key（格式：`sk-or-v1-xxx`）
+4. 填入 `.env`：`OPENROUTER_API_KEY=sk-or-v1-xxx`
+
+> 新账户有免费额度，Claude Sonnet 约 $3/1M tokens，Demo 用量极低。
+
+---
+
+### 2. Shopify Admin API（选填）
+
+用于 Dashboard 显示真实订单数据。不填则显示 mock 数据。
+
+1. 进 Shopify Admin（`your-store.myshopify.com/admin`）
 2. **Settings → Apps and sales channels → Develop apps**
-3. **Create an app** → 填写名称（如 ShopiFow Demo）
-4. **Configure Admin API scopes** → 勾选：
-   - `read_orders`
-   - `read_products`
-5. **Install app** → 复制 Admin API Access Token
-
-### 如何获取 OpenRouter API Key
-
-1. 注册 https://openrouter.ai
-2. 进入 **Keys** → **Create Key**
-3. 复制填入 `OPENROUTER_API_KEY`
-4. 默认使用 `anthropic/claude-sonnet-4-6` 模型
+3. 点 **Create an app** → 输入名称（如 `ShopiFow`）
+4. 进入 app → **Configuration → Admin API integration → Configure**
+5. 勾选 scope：`read_orders`、`read_products` → **Save**
+6. 回到 app 页 → **Install app** → **Install**
+7. 复制 **Admin API access token**（只显示一次，注意保存）
+8. 填入 `.env`：
+   ```
+   SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
+   SHOPIFY_ACCESS_TOKEN=shpat_xxx
+   ```
 
 ---
 
-## Docker 服务
+### 3. Judge.me（选填）
 
-`docker-compose.yml` 启动两个服务：
+用于评论页显示 Shopify 店铺的真实评论。不填则显示 8 条 mock 评论。
 
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| PostgreSQL | 5433 | n8n 的数据库（pgvector 镜像） |
-| n8n | 5678 | Workflow 自动化平台 |
+**前提：Shopify 店铺需要先安装 Judge.me App。**
 
-常用命令：
+1. 进 Shopify App Store 搜索 **Judge.me Product Reviews** → 安装（有永久免费套餐）
+2. 安装完成后进 Judge.me 后台（`judge.me/admin`）
+3. 左下角 **Settings → General → API token** → 复制 token
+4. 填入 `.env`：
+   ```
+   JUDGE_ME_API_TOKEN=your-token
+   JUDGE_ME_SHOP_DOMAIN=your-store.myshopify.com
+   ```
+
+> Judge.me 的 API token 是只读的，安全风险低。
+
+---
+
+### 4. Gorgias（选填）
+
+用于客服页的 **Live Tickets** 标签，显示并处理真实工单。不填则只有 Demo Chat 模式。
+
+**注册：**
+
+1. 访问 [gorgias.com](https://www.gorgias.com) → **Start free trial**
+   - 10 天免费，不需要信用卡
+   - 注册时填写公司名（随意），选 Shopify 作为主平台
+2. 注册完成后，进 **Integrations → Shopify** → 连接你的 Shopify 店铺（授权）
+3. 可选：**Integrations → Amazon / TikTok** → 按提示连接其他平台
+
+**获取 API Key：**
+
+1. 进 Gorgias 后台 → 左侧 **Settings → REST API**
+2. 点 **New API key** → 输入名称（如 `ShopiFow`）→ **Create**
+3. 复制 API key（只显示一次）
+4. 记下你的 Gorgias 子域名（注册时选择，格式：`your-account.gorgias.com`）
+5. 填入 `.env`：
+   ```
+   GORGIAS_BASE_URL=https://your-account.gorgias.com/api
+   GORGIAS_EMAIL=your@email.com
+   GORGIAS_API_KEY=your-api-key
+   ```
+
+---
+
+## 第二步：配置 .env
+
+`setup.sh` 会自动从 `.env.example` 复制生成 `.env`，填入你的真实值：
 
 ```bash
-# 启动
-docker compose up -d
+# 必填
+OPENROUTER_API_KEY=sk-or-v1-xxx
 
-# 查看状态
-docker compose ps
+# 选填（Shopify 订单数据）
+SHOPIFY_STORE_DOMAIN=your-store.myshopify.com
+SHOPIFY_ACCESS_TOKEN=shpat_xxx
 
-# 查看日志
-docker compose logs n8n -f
+# 选填（真实评论数据）
+JUDGE_ME_API_TOKEN=xxx
+JUDGE_ME_SHOP_DOMAIN=your-store.myshopify.com
 
-# 停止
-docker compose down
+# 选填（真实客服工单）
+GORGIAS_BASE_URL=https://your-account.gorgias.com/api
+GORGIAS_EMAIL=your@email.com
+GORGIAS_API_KEY=xxx
 
-# 停止并删除数据
-docker compose down -v
+# n8n webhook（本地默认不用改）
+N8N_WEBHOOK_BASE_URL=http://localhost:5678/webhook
 ```
 
 ---
 
-## n8n Workflows 导入
+## 第三步：n8n 工作流配置
 
-1. 打开 http://localhost:5678
-2. 首次进入需要创建账号（本地 demo 填任意邮箱/密码即可）
-3. 进入 **Workflows → Import from File**
-4. 分别导入：
+### 3.1 导入工作流
+
+1. 打开 http://localhost:5678（账号密码见 starter kit 的 `.env`）
+2. 左侧 **Workflows** → 右上角 **⋮** → **Import from file**
+3. 依次导入：
    - `n8n/workflows/support-ticket-handler.json`
    - `n8n/workflows/review-reply-generator.json`
-5. 在每个 workflow 中配置 **OpenRouter HTTP Header Credential**：
-   - Header Name: `Authorization`
-   - Header Value: `Bearer YOUR_OPENROUTER_API_KEY`
+4. 每个工作流导入后，右上角 **Toggle** 切换为 **Active**
 
-### Workflow 说明
+### 3.2 配置 Credentials
 
-**support-ticket-handler**
+进 n8n → **Settings → Credentials → New**，只需创建 1 个：
+
+#### OpenRouter（用于 Claude 对话）
+
 ```
-Webhook (POST /shopiflow-support)
-  → 拉取 Shopify 订单详情
-  → 调用 OpenRouter AI 生成回复
-  → 解析回复 + 分类（退款/物流/咨询/需人工）
-  → 置信度 < 70% → 标记人工处理
-  → 返回 JSON 响应
+Type:            OpenAI API（选这个，兼容格式）
+Name:            OpenRouter (OpenAI-compatible)
+Base URL:        https://openrouter.ai/api/v1
+API Key:         <你的 OPENROUTER_API_KEY>
 ```
 
-**review-reply-generator**
+然后在两个 workflow 的 AI 节点里选择这个 credential。
+
+**可选：Gorgias HTTP Basic Auth**（如果要测试真实 Gorgias webhook 自动回复）
+
 ```
-Webhook (POST /shopiflow-review)
-  → 分类 Review 情感和优先级
-  → 调用 OpenRouter AI 生成品牌回复
-  → 差评 → 高优先级标记 + 特殊处理
-  → 返回 JSON 响应
+Type:            HTTP Basic Auth
+Name:            Gorgias API
+Username:        <你的 GORGIAS_EMAIL>
+Password:        <你的 GORGIAS_API_KEY>
 ```
+
+---
+
+## Demo 演示脚本
+
+### 页面 1：Dashboard
+
+展示自动化处理效果：
+- 今日已自动处理 42 个工单，节省 3.5 小时
+- 14 天订单趋势图
+- 近期订单列表（真实 Shopify 数据 或 mock）
+
+### 页面 2：Support Chat
+
+**Demo Chat 标签（无需配置即可演示）：**
+
+| 点击哪条 demo | 来源 | 预期结果 |
+|-------------|------|---------|
+| "Where is my order #5678?" | Shopify | AI 查 Pinecone → 自动回复 |
+| "I had a bad reaction..." | Amazon | 高风险 → Escalate，不回复 |
+| "I'd like a refund..." | TikTok | AI 起草 → 等待人工确认 |
+
+**Live Tickets 标签（需配置 Gorgias）：**
+- 列出 Gorgias 所有 open tickets
+- 点 "Classify with AI →" 触发分类
+- AUTO/DRAFT 票据可直接编辑并通过 Gorgias 发送回复
+
+### 页面 3：Reviews
+
+- 配置 Judge.me 后显示真实评论，否则显示 8 条 mock 评论
+- 支持 5 种语言回复（English / 中文 / Español / 日本語 / Deutsch）
+- 单条生成或批量 "Generate All"
+
+### 页面 4：Automation
+
+- 3 个工作流可视化，点 "Simulate Run" 触发步骤动画
+- 展示运行统计（总次数 / 成功率 / 平均耗时）
 
 ---
 
 ## Railway 部署
 
-1. 在 Railway 创建新项目，连接 GitHub 仓库
-2. 添加环境变量（Settings → Variables）：
-   - `OPENROUTER_API_KEY`
-   - `SHOPIFY_STORE_DOMAIN`
-   - `SHOPIFY_ACCESS_TOKEN`
-3. Railway 会自动识别 `railway.json` 并使用正确的 build/start 命令
-4. n8n 和 PostgreSQL 在本地 Docker 运行，Railway 只部署 Next.js 前端
+### 部署前端
 
-> **注意**：Railway 部署后 n8n webhook 需要换成公网地址。可在 Railway 上单独部署 n8n 服务。
+1. 在 Railway 创建新 Project → **Deploy from GitHub repo**
+2. 选择 `shopiFlow` 仓库
+3. Railway 自动读取 `railway.json` 配置
+4. 在 **Variables** 面板填入所有 `.env` 变量（替换 localhost 为 Railway 服务地址）：
+   ```
+   OPENROUTER_API_KEY     = sk-or-v1-xxx
+   SHOPIFY_STORE_DOMAIN   = your-store.myshopify.com
+   SHOPIFY_ACCESS_TOKEN   = shpat_xxx
+   JUDGE_ME_API_TOKEN     = xxx
+   JUDGE_ME_SHOP_DOMAIN   = your-store.myshopify.com
+   GORGIAS_BASE_URL       = https://your-account.gorgias.com/api
+   GORGIAS_EMAIL          = your@email.com
+   GORGIAS_API_KEY        = xxx
+   N8N_WEBHOOK_BASE_URL   = https://your-n8n.up.railway.app/webhook
+   NEXT_PUBLIC_APP_URL    = https://your-frontend.up.railway.app
+   ```
 
----
+### 部署 n8n
 
-## 技术架构
-
-```
-用户浏览器
-    │
-    ▼
-Next.js 14 (App Router)           ← Railway / localhost:3000
-    │
-    ├── /api/shopify/orders        ← 服务端：调用 Shopify Admin API
-    ├── /api/shopify/products      ← 服务端：调用 Shopify Admin API
-    ├── /api/ai/support            ← 服务端：流式调用 OpenRouter API
-    └── /api/ai/review             ← 服务端：流式调用 OpenRouter API
-
-Shopify Admin API                  ← 真实订单/产品数据
-OpenRouter API (Claude)            ← AI 回复生成
-n8n (Docker)                       ← Workflow 自动化（可选触发器）
-PostgreSQL (Docker)                ← n8n 数据存储
-```
+参考 `self-hosted-ai-starter-kit` 目录下的 Railway 配置，单独部署 n8n 服务。
 
 ---
 
-## Demo 演示路径（8 分钟）
+## 故障排查
 
-1. **Dashboard**：展示真实 Shopify 订单数据、KPI 指标、7 天趋势图
-2. **AI 客服**：
-   - 点击一个"未发货"类 ticket → 看到关联真实订单
-   - 点击「Generate AI Reply」→ 流式输出回复
-   - 查看分类标签（退款/物流/咨询）+ 置信度
-   - 点击「How it works」→ 展示 System Prompt 和 n8n 触发逻辑
-3. **Review 管理**：
-   - 点击 1 星差评 → AI 生成高优先级道歉回复
-   - 对比 5 星好评回复 → 展示语气差异
-   - 点击「How it works」→ 展示 Review 处理流程
+### n8n webhook 返回 404
 
----
+- 工作流未激活：进 n8n，右上角 Toggle → Active
+- Webhook path 错误：确认为 `support-chat` 和 `review-reply`
+- 前端有 OpenRouter 降级，n8n 不可用时 Demo Chat 仍正常
 
-## 常见问题
+### Shopify 401
 
-**Q: Shopify 数据为空**
-检查 `.env` 中 `SHOPIFY_STORE_DOMAIN` 和 `SHOPIFY_ACCESS_TOKEN` 是否正确，且 Development Store 有真实订单。
+- `SHOPIFY_STORE_DOMAIN` 不含 `https://`，格式：`your-store.myshopify.com`
+- Custom App 需要先 Install 才能使用 token
 
-**Q: AI 回复失败**
-检查 `OPENROUTER_API_KEY` 是否有效，以及 OpenRouter 账户余额。
+### Judge.me 数据为空
 
-**Q: Docker 启动失败**
-确保 Docker Desktop 已启动，端口 5678 和 5433 未被占用：
-```bash
-lsof -i :5678
-lsof -i :5433
-```
+- 确认 Shopify 店铺已安装 Judge.me App
+- `JUDGE_ME_SHOP_DOMAIN` 与 Shopify 域名一致
 
-**Q: n8n workflow 导入后 HTTP credentials 报错**
-在 n8n → Credentials → New → HTTP Header Auth 中创建：
-- Name: `OpenRouter`
-- Header Name: `Authorization`
-- Header Value: `Bearer sk-or-v1-xxxxx`
+### Gorgias 连接失败
+
+- `GORGIAS_BASE_URL` 格式：`https://your-account.gorgias.com/api`（末尾无斜杠）
+- API key 对应的邮箱必须是 Gorgias 账号登录邮箱
+
+### n8n workflow 执行失败
+
+- 确认 OpenRouter credential 已创建并在 AI 节点里选中
+- 检查 n8n 环境变量（如需访问 Gorgias，需在 docker-compose 里配 `GORGIAS_DOMAIN`）
+- Demo 模式不需要 Gorgias，前端直接调 n8n webhook 测试分类逻辑
+
