@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { ReviewPlatform } from '@/types';
 
+export const maxDuration = 60;
+
 const N8N_WEBHOOK = process.env.N8N_WEBHOOK_BASE_URL;
 
 export async function POST(req: NextRequest) {
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
         reviewerName: reviewerName || 'Customer',
         platform,
       },
-      { timeout: 30000 },
+      { timeout: 60000 },
     );
 
     const data = n8nResponse.data;

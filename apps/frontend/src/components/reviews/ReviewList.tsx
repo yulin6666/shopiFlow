@@ -6,12 +6,7 @@ import { getPlatformColor, getRatingStars, formatDate } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 
 const LANGUAGE_OPTIONS = [
-  { value: 'same', label: 'Same as review' },
   { value: 'en', label: 'English' },
-  { value: 'zh', label: 'Chinese' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'de', label: 'German' },
 ];
 
 export default function ReviewList() {
@@ -19,7 +14,7 @@ export default function ReviewList() {
   const [source, setSource] = useState<'judgeme' | 'mock' | 'loading'>('loading');
   const [warning, setWarning] = useState<string | null>(null);
   const [filterPlatform, setFilterPlatform] = useState<ReviewPlatform | 'all'>('all');
-  const [replyLanguage, setReplyLanguage] = useState('same');
+  const [replyLanguage] = useState('en');
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,7 +37,7 @@ export default function ReviewList() {
     setGeneratingId(review.id);
     setReviews((prev) => prev.map((r) => (r.id === review.id ? { ...r, status: 'generating' } : r)));
 
-    const targetLanguage = replyLanguage === 'same' ? undefined : replyLanguage;
+    const targetLanguage = 'en';
 
     try {
       const response = await fetch('/api/ai/review', {
@@ -52,7 +47,7 @@ export default function ReviewList() {
           platform: review.platform,
           rating: review.rating,
           content: review.content,
-          productName: review.productName,
+          productTitle: review.productName,
           language: review.language,
           targetLanguage,
         }),
@@ -126,19 +121,6 @@ export default function ReviewList() {
               {p === 'all' ? `All (${reviews.length})` : p.charAt(0).toUpperCase() + p.slice(1)}
             </button>
           ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500">Reply language:</label>
-          <select
-            value={replyLanguage}
-            onChange={(e) => setReplyLanguage(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700"
-          >
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
         </div>
 
         <Button

@@ -19,11 +19,12 @@ async function gorgiasGet<T>(path: string): Promise<T> {
       Authorization: `Basic ${gorgiasAuth()}`,
       Accept: 'application/json',
     },
-    next: { revalidate: 30 },
+    cache: 'no-store',
   });
 
   if (!res.ok) {
-    throw new Error(`Gorgias API error: ${res.status} ${res.statusText}`);
+    const body = await res.text().catch(() => '');
+    throw new Error(`Gorgias API error: ${res.status} ${res.statusText} — ${body}`);
   }
 
   return res.json() as Promise<T>;

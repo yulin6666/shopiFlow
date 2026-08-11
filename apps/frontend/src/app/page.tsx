@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import SupportChat from '@/components/support/SupportChat';
 import QuestionList from '@/components/support/QuestionList';
+// import GorgiasImportPanel from '@/components/support/GorgiasImportPanel';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 
@@ -93,13 +94,18 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowQuestions(!showQuestions)}
-              >
-                {showQuestions ? 'Hide' : 'Show'} Sample Questions
-              </Button>
+              <div className="flex gap-2 relative">
+              {/* <GorgiasImportPanel
+                  onSendMessage={(msg) => chatInputRef.current?.sendMessage(msg)}
+                /> */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowQuestions(!showQuestions)}
+                >
+                  {showQuestions ? 'Hide' : 'Show'} Sample Questions
+                </Button>
+              </div>
             </div>
 
             {/* Question List */}

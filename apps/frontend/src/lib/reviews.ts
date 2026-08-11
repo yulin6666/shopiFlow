@@ -33,12 +33,12 @@ export const mockReviews: Review[] = [
     platform: 'tiktok',
     author: 'liu_wellness',
     rating: 5,
-    title: '超级有效！',
+    title: 'Skin looks amazing!',
     content:
-      '用了两个月，皮肤状态明显改善，朋友都说我看起来更有气色了。包装也很高档，送礼自用两相宜。强烈推荐！',
+      'Been using this for two months and my skin has improved so much. Friends keep asking what I changed in my routine. Packaging is beautiful too — great as a gift or for yourself. Highly recommend!',
     date: '2026-07-22',
     productName: 'Collagen Glow Complex',
-    language: 'zh',
+    language: 'en',
     status: 'pending',
   },
   {
@@ -59,12 +59,12 @@ export const mockReviews: Review[] = [
     platform: 'amazon',
     author: 'Carlos R.',
     rating: 5,
-    title: '¡Excelente producto!',
+    title: 'Excellent product!',
     content:
-      'Llevo 6 semanas tomando este suplemento y los resultados son increíbles. Más energía, mejor humor y duermo como un bebé. El precio es muy razonable para la calidad que ofrece.',
+      "Been taking this supplement for 6 weeks and the results are incredible. More energy, better mood, and sleeping great. The price is very reasonable for the quality you get.",
     date: '2026-07-18',
     productName: 'Daily Wellness Bundle',
-    language: 'es',
+    language: 'en',
     status: 'pending',
   },
   {
@@ -85,12 +85,12 @@ export const mockReviews: Review[] = [
     platform: 'shopify',
     author: 'Yuki Tanaka',
     rating: 5,
-    title: 'リピート確定！',
+    title: 'Definitely reordering!',
     content:
-      '毎日飲み続けて1ヶ月。疲れにくくなり、肌の調子も上がりました。成分がしっかりしていて安心感があります。次回はまとめ買いする予定です。',
+      'One month in and I feel so much less tired throughout the day. My skin has also improved noticeably. The ingredients list is reassuring — clean and high quality. Will be buying in bulk next time.',
     date: '2026-07-12',
     productName: 'Collagen Glow Complex',
-    language: 'ja',
+    language: 'en',
     status: 'pending',
   },
   {
