@@ -111,7 +111,7 @@ export default function SupportPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Chat with AI</h2>
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => setShowQuestions(!showQuestions)}
             >

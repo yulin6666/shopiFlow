@@ -7,9 +7,9 @@ import { SUPPORT_ESCALATION_MESSAGES } from '@/lib/prompts';
 
 function getEscalationColor(escalation: EscalationLevel) {
   switch (escalation) {
-    case 'auto_replied':
+    case 'auto':
       return 'bg-green-100 text-green-800';
-    case 'needs_review':
+    case 'draft':
       return 'bg-amber-100 text-amber-800';
     case 'escalated':
       return 'bg-red-100 text-red-800';
@@ -83,7 +83,7 @@ const SupportChat = forwardRef<SupportChatRef>((props, ref) => {
     setMessages((prev) =>
       prev.map((m) =>
         m.id === messageId
-          ? { ...m, content: finalText, escalation: 'auto_replied' as EscalationLevel }
+          ? { ...m, content: finalText, escalation: 'auto' as EscalationLevel }
           : m
       )
     );
@@ -118,9 +118,9 @@ const SupportChat = forwardRef<SupportChatRef>((props, ref) => {
                 <div className="mt-2 pt-2 border-t border-gray-200">
                   <div className="flex items-center gap-2 text-xs">
                     <span className={`px-2 py-0.5 rounded ${getEscalationColor(msg.escalation)}`}>
-                      {msg.escalation === 'auto_replied'
+                      {msg.escalation === 'auto'
                         ? 'Auto-replied'
-                        : msg.escalation === 'needs_review'
+                        : msg.escalation === 'draft'
                         ? 'Draft for review'
                         : 'Escalated to human'}
                     </span>
@@ -129,7 +129,7 @@ const SupportChat = forwardRef<SupportChatRef>((props, ref) => {
                 </div>
               )}
 
-              {msg.draftReply && msg.escalation === 'needs_review' && (
+              {msg.draftReply && msg.escalation === 'draft' && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   {editingDraft?.messageId === msg.id ? (
                     <div className="space-y-2">
