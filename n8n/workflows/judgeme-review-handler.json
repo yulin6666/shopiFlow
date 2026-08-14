@@ -17,13 +17,71 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst reviewId = body.reviewId || Date.now();\nconst rating = body.rating || 5;\nconst title = body.title || '';\nconst reviewBody = body.body || '';\nconst productTitle = body.productTitle || 'Our product';\nconst reviewerName = body.reviewerName || 'Customer';\nconst platform = body.platform || 'shopify';\n\nreturn [{\n  json: {\n    reviewId,\n    rating,\n    title,\n    body: reviewBody,\n    productTitle,\n    reviewerName,\n    platform,\n    chatInput: 'Product: ' + productTitle + '\\nRating: ' + rating + '/5\\nReviewer: ' + reviewerName + '\\nPlatform: ' + platform + '\\nTitle: ' + title + '\\nBody: ' + reviewBody\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst reviewId = body.reviewId || Date.now();\nconst rating = body.rating || 5;\nconst title = body.title || '';\nconst reviewBody = body.body || '';\nconst productTitle = body.productTitle || 'Our product';\nconst reviewerName = body.reviewerName || 'Customer';\nconst platform = body.platform || 'shopify';\n\n// Input validation\nif (!reviewBody || reviewBody.trim().length === 0) {\n  throw new Error(`Invalid input: review body is required. Received reviewId=${reviewId}`);\n}\n\nif (rating < 1 || rating > 5) {\n  throw new Error(`Invalid rating: ${rating}. Must be between 1 and 5`);\n}\n\nreturn [{\n  json: {\n    reviewId,\n    rating: Number(rating),\n    title,\n    body: reviewBody,\n    productTitle,\n    reviewerName,\n    platform,\n    chatInput: 'Product: ' + productTitle + '\\nRating: ' + rating + '/5\\nReviewer: ' + reviewerName + '\\nPlatform: ' + platform + '\\nTitle: ' + title + '\\nBody: ' + reviewBody\n  }\n}];"
       },
       "id": "parse-input",
       "name": "Parse Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-body",
+              "leftValue": "={{ $json.body }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "check-rating",
+              "leftValue": "={{ $json.rating }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "check-rating-max",
+              "leftValue": "={{ $json.rating }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "content": "Input validation failed",
+        "errorMessage": "={{ 'Invalid review data: rating=' + $json.rating + ', body=' + ($json.body || 'empty') }}"
+      },
+      "id": "stop-on-invalid",
+      "name": "Stop on Invalid Input",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [660, 480]
     },
     {
       "parameters": {
@@ -37,7 +95,8 @@
       "name": "Review AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [720, 300]
+      "position": [900, 300],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -48,7 +107,7 @@
       "name": "OpenRouter Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [620, 520],
+      "position": [800, 520],
       "credentials": {
         "openAiApi": { "id": "openrouter-openai-api", "name": "OpenRouter (OpenAI-compatible)" }
       }
@@ -70,10 +129,11 @@
       "name": "Product Knowledge (Pinecone)",
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1,
-      "position": [820, 520],
+      "position": [1000, 520],
       "credentials": {
         "pineconeApi": { "id": "pinecone-api", "name": "Pinecone API" }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -84,20 +144,30 @@
       "name": "Embeddings OpenAI",
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1,
-      "position": [820, 680],
+      "position": [1000, 680],
       "credentials": {
         "openAiApi": { "id": "openai-api", "name": "OpenAI API" }
       }
     },
     {
       "parameters": {
-        "jsCode": "const review = $('Parse Input').first().json;\nconst reply = ($input.first().json.output || $input.first().json.text || '').trim();\nconst rating = Number(review.rating);\nconst status = rating <= 3 ? 'needs_approval' : 'auto_replied';\n\nreturn [{\n  json: {\n    status,\n    reviewId: review.reviewId,\n    rating,\n    productTitle: review.productTitle,\n    reviewerName: review.reviewerName,\n    platform: review.platform,\n    generatedReply: reply,\n    originalReview: review.chatInput\n  }\n}];"
+        "jsCode": "const review = $('Parse Input').first().json;\nconst reply = ($input.first().json.output || $input.first().json.text || '').trim();\nconst rating = Number(review.rating);\n\n// Validate reply length\nif (reply.length > 400) {\n  reply = reply.substring(0, 397) + '...';\n}\n\nconst status = rating <= 3 ? 'needs_approval' : 'auto_replied';\n\nreturn [{\n  json: {\n    status,\n    reviewId: review.reviewId,\n    rating,\n    productTitle: review.productTitle,\n    reviewerName: review.reviewerName,\n    platform: review.platform,\n    generatedReply: reply,\n    originalReview: review.chatInput\n  }\n}];"
       },
       "id": "merge-reply",
       "name": "Parse Reply & Determine Status",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [960, 300]
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const review = $('Parse Input').first().json;\nconst error = $input.first().json.error || {};\nconst rating = Number(review.rating);\n\n// AI failed, escalate for manual review\nreturn [{\n  json: {\n    status: 'needs_approval',\n    reviewId: review.reviewId,\n    rating,\n    productTitle: review.productTitle,\n    reviewerName: review.reviewerName,\n    platform: review.platform,\n    generatedReply: '[AI failed to generate reply - requires manual response]',\n    originalReview: review.chatInput,\n    errorDetails: 'AI Agent Error: ' + (error.message || 'Unknown error')\n  }\n}];"
+      },
+      "id": "handle-ai-error",
+      "name": "Handle AI Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 500]
     },
     {
       "parameters": {
@@ -149,13 +219,15 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "fallbackOutput": "extra"
+        }
       },
       "id": "route-by-rating",
       "name": "Route by Rating",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1200, 300]
+      "position": [1380, 300]
     },
     {
       "parameters": {
@@ -167,18 +239,18 @@
       "name": "Respond (Auto Approved)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1440, 200]
+      "position": [1620, 200]
     },
     {
       "parameters": {
-        "content": "⚠️ **Review Reply Needs Approval**\n\n**Review ID:** {{ $json.reviewId }}\n**Product:** {{ $json.productTitle }}\n**Reviewer:** {{ $json.reviewerName }}\n**Platform:** {{ $json.platform }}\n**Rating:** {{ $json.rating }}/5 ⭐\n\n**Original Review:**\n```\n{{ $json.originalReview }}\n```\n\n**AI Generated Reply:**\n```\n{{ $json.generatedReply }}\n```\n\n👉 Low-rating review requires manual approval before publishing.",
+        "content": "⚠️ **Review Reply Needs Approval**\n\n**Review ID:** {{ $json.reviewId }}\n**Product:** {{ $json.productTitle }}\n**Reviewer:** {{ $json.reviewerName }}\n**Platform:** {{ $json.platform }}\n**Rating:** {{ $json.rating }}/5 ⭐\n\n**Original Review:**\n```\n{{ $json.originalReview }}\n```\n\n**AI Generated Reply:**\n```\n{{ $json.generatedReply }}\n```\n\n{{ $json.errorDetails ? '⚠️ Error: ' + $json.errorDetails : '👉 Low-rating review requires manual approval before publishing.' }}",
         "options": {}
       },
       "id": "slack-review-approval",
       "name": "Slack Approval Request",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.1,
-      "position": [1440, 400],
+      "position": [1620, 400],
       "credentials": {
         "slackApi": { "id": "slack-api", "name": "Slack API" }
       },
@@ -194,7 +266,18 @@
       "name": "Respond (Needs Approval)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1680, 400]
+      "position": [1860, 400]
+    },
+    {
+      "parameters": {
+        "content": "Invalid rating route",
+        "errorMessage": "={{ 'Rating routing failed: ' + $json.rating }}"
+      },
+      "id": "stop-on-invalid-route",
+      "name": "Stop on Invalid Route",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [1620, 600]
     }
   ],
   "connections": {
@@ -202,7 +285,13 @@
       "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
     },
     "Parse Input": {
-      "main": [[{ "node": "Review AI Agent", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Validate Input", "type": "main", "index": 0 }]]
+    },
+    "Validate Input": {
+      "main": [
+        [{ "node": "Review AI Agent", "type": "main", "index": 0 }],
+        [{ "node": "Stop on Invalid Input", "type": "main", "index": 0 }]
+      ]
     },
     "OpenRouter Chat Model": {
       "ai_languageModel": [[{ "node": "Review AI Agent", "type": "ai_languageModel", "index": 0 }]]
@@ -214,15 +303,22 @@
       "ai_embedding": [[{ "node": "Product Knowledge (Pinecone)", "type": "ai_embedding", "index": 0 }]]
     },
     "Review AI Agent": {
-      "main": [[{ "node": "Parse Reply & Determine Status", "type": "main", "index": 0 }]]
+      "main": [
+        [{ "node": "Parse Reply & Determine Status", "type": "main", "index": 0 }],
+        [{ "node": "Handle AI Error", "type": "main", "index": 0 }]
+      ]
     },
     "Parse Reply & Determine Status": {
+      "main": [[{ "node": "Route by Rating", "type": "main", "index": 0 }]]
+    },
+    "Handle AI Error": {
       "main": [[{ "node": "Route by Rating", "type": "main", "index": 0 }]]
     },
     "Route by Rating": {
       "main": [
         [{ "node": "Slack Approval Request", "type": "main", "index": 0 }],
-        [{ "node": "Respond (Auto Approved)", "type": "main", "index": 0 }]
+        [{ "node": "Respond (Auto Approved)", "type": "main", "index": 0 }],
+        [{ "node": "Stop on Invalid Route", "type": "main", "index": 0 }]
       ]
     },
     "Slack Approval Request": {
@@ -230,10 +326,13 @@
     }
   },
   "pinData": {},
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "shopiflow-error-handler-global"
+  },
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2026-08-06T00:00:00.000Z",
-  "versionId": "shopiflow-review-v3"
+  "updatedAt": "2026-08-13T00:00:00.000Z",
+  "versionId": "shopiflow-review-v4"
 }
