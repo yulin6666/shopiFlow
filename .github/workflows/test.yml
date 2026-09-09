@@ -113,7 +113,6 @@ jobs:
           TEST_DB_NAME: shopiflow_test
           TEST_DB_USER: test_user
           TEST_DB_PASSWORD: test_password
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: npm run test:integration
 
       - name: Print n8n logs on failure

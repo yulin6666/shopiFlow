@@ -96,34 +96,16 @@ docker exec n8n-test n8n import:workflow --input=/tmp/workflow.json
 
 ---
 
-## 必需的 GitHub Secrets 配置
+## GitHub Secrets 配置
 
-### 步骤 1: 添加 `OPENROUTER_API_KEY`
+集成测试**不需要**配置 GitHub Secrets。
 
-集成测试需要调用真实的 OpenRouter API（Claude）来验证 n8n workflow。
+**架构说明：**
+- 集成测试通过调用 n8n webhook 来验证 workflows
+- n8n 内部配置了 OpenRouter API credentials（在 n8n UI 的 Credentials 管理中）
+- 测试代码只需要访问 n8n 的 HTTP 端点，不需要直接访问 OpenRouter API
 
-**操作步骤：**
-
-1. 访问 [OpenRouter Dashboard](https://openrouter.ai/keys)
-2. 创建一个 API Key（建议设置用量限制，如 $5/月）
-3. 进入 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**
-4. 点击 **New repository secret**
-5. 填写：
-   - **Name**: `OPENROUTER_API_KEY`
-   - **Value**: `sk-or-v1-...`（你的 OpenRouter API Key）
-6. 点击 **Add secret**
-
-**成本估算：**
-- 每次集成测试约调用 2-4 次 AI API
-- 每次 ~0.01-0.05 美元
-- 每月运行 100 次测试 ≈ $1-5
-
-**安全建议：**
-- ✅ 为 CI 创建独立的 API Key，设置严格的用量限制
-- ✅ 不要使用生产环境的 API Key
-- ✅ 定期轮换 API Key
-
-### 步骤 2: 验证 Secret 配置
+**验证测试运行：**
 
 推送代码后，查看 GitHub Actions 运行日志：
 
@@ -132,11 +114,9 @@ git push origin feature_v2
 ```
 
 在 GitHub 仓库 → **Actions** 标签 → 点击最新的 workflow run → 检查：
-- **unit-tests** 应该通过（不需要 API Key）
-- **integration-tests** 如果缺少 `OPENROUTER_API_KEY`，会报错：
-  ```
-  Error: Missing OPENROUTER_API_KEY environment variable
-  ```
+- **unit-tests** 应该通过（不依赖外部服务）
+- **integration-tests** 应该通过（依赖 n8n + PostgreSQL Docker 容器）
+- **build-check** 应该通过（Next.js 构建验证）
 
 ---
 

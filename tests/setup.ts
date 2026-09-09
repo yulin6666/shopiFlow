@@ -17,9 +17,7 @@ export const TEST_CONFIG = {
     user: process.env.TEST_DB_USER || 'test_user',
     password: process.env.TEST_DB_PASSWORD || 'test_password',
   },
-  openrouter: {
-    apiKey: process.env.OPENROUTER_API_KEY || 'test-key',
-  },
+  // OpenRouter API Key 配置在 n8n credentials 中，不需要在测试环境里
 };
 
 // 全局 beforeAll - 可选的初始化逻辑
