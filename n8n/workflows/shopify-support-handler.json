@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || '';\nconst ticketId = body.ticketId || Date.now();\nconst customerName = body.customerName || 'Customer';\nconst customerEmail = body.customerEmail || '';\nconst platform = body.platform || 'shopify';\nconst orderId = body.orderId || null;\n\n// Input validation\nif (!message || message.trim().length === 0) {\n  throw new Error(`Invalid input: message is required. Received ticketId=${ticketId}`);\n}\n\nreturn [{\n  json: {\n    ticketId,\n    customerName,\n    customerEmail,\n    platform,\n    orderId,\n    chatInput: 'Platform: ' + platform + '\\nMessage: ' + message + '\\nOrder ID: ' + (orderId || 'None')\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || '';\nconst ticketId = body.ticketId || Date.now();\nconst customerName = body.customerName || 'Customer';\nconst customerEmail = body.customerEmail || '';\nconst platform = body.platform || 'shopify';\nconst orderId = body.orderId || null;\n\n// Input validation\nif (!message || message.trim().length === 0) {\n  throw new Error(`Invalid input: message is required. Received ticketId=${ticketId}`);\n}\n\n// Force-error mode for testing: pass through to trigger downstream AI Agent failure\nconst forceError = String(ticketId).startsWith('test-force-error-');\n\nreturn [{\n  json: {\n    ticketId,\n    customerName,\n    customerEmail,\n    platform,\n    orderId,\n    chatInput: 'Platform: ' + platform + '\\nMessage: ' + message + '\\nOrder ID: ' + (orderId || 'None'),\n    forceError\n  }\n}];"
       },
       "id": "parse-input",
       "name": "Parse Input",
@@ -68,7 +68,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $json.chatInput }}",
+        "text": "={{ $json.forceError ? $json.nonExistentField.causeError : $json.chatInput }}",
         "options": {
           "systemMessage": "You are a customer support AI for a Shopify store.\n\nIMPORTANT INSTRUCTIONS:\n1. ALWAYS use the Shopify Data tool to query the knowledge base before answering questions about products, orders, inventory, or pricing.\n2. After getting results from the tool, CAREFULLY FILTER the data based on what the customer asked:\n   - If asking about a specific brand/vendor (e.g., \"NIKE products\"), ONLY include records where metadata.vendor matches OR the product name contains that brand\n   - If asking about products, ONLY use records where metadata.type=\"product\"\n   - If asking about orders, ONLY use records where metadata.type=\"order\"\n   - IGNORE irrelevant results even if they appear in the tool output\n3. DO NOT make up prices, stock levels, or product details - only use information from the filtered results\n4. After filtering and answering, classify the message and respond in JSON format\n\nClassify into ONE of three categories:\n\n1. \"auto\" - Standard informational questions that can be answered directly:\n   - Order tracking / shipping status (\"Where is my order?\", \"What's the status of order #1180?\")\n   - Product inquiries / availability (\"List all NIKE products\", \"Do you have ADIDAS backpacks?\")\n   - Policy questions (\"What's your return policy?\", \"Do you offer free shipping?\")\n   - General store info\n\n2. \"draft\" - Requests that need human review before sending:\n   - ANY message containing: \"refund\", \"cancel order\", \"return order\", \"complaint\", \"disappointed\", \"not satisfied\"\n   - Discount/coupon requests (\"Do you have discount codes?\")\n   - Order modifications (\"Can I add items?\", \"Can I change my order?\")\n   - Return requests (\"I want to return\")\n\n3. \"escalate\" - High-risk messages requiring immediate human intervention:\n   - ANY message containing: \"sue\", \"lawyer\", \"legal\", \"chargeback\", \"dispute\", \"fraud\"\n   - Health/safety issues: \"allergic\", \"reaction\", \"sick\", \"injured\", \"unsafe\"\n   - Payment disputes: \"charged twice\", \"billed incorrectly\"\n   - Extreme emotions: \"terrible\", \"worst\", \"angry\", \"furious\", \"unacceptable\"\n   - Threats or demands for manager\n\nYou MUST respond in JSON format only:\n{\n  \"classification\": \"auto|draft|escalate\",\n  \"reason\": \"brief explanation\",\n  \"risk_level\": \"low|medium|high\",\n  \"reply\": \"draft reply text (for auto and draft only, null for escalate)\"\n}"
         }
@@ -114,12 +114,11 @@
       "position": [1000, 520],
       "credentials": {
         "pineconeApi": { "id": "pinecone-api", "name": "Pinecone API" }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "parameters": {
-        "model": "text-embedding-3-small",
+        "model": "qwen/qwen3-embedding-8b",
         "options": {}
       },
       "id": "embeddings",
@@ -143,13 +142,29 @@
     },
     {
       "parameters": {
-        "jsCode": "const ticket = $('Parse Input').first().json;\nconst error = $input.first().json.error || {};\n\nreturn [{\n  json: {\n    status: 'escalated',\n    classification: 'escalate',\n    reason: 'AI agent failed: ' + (error.message || 'Unknown error'),\n    riskLevel: 'high',\n    reply: null,\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput,\n    errorDetails: JSON.stringify(error)\n  }\n}];"
+        "jsCode": "const ticket = $('Parse Input').first().json;\nconst error = $input.first().json.error || {};\n\n// 降级兜底逻辑：AI 失败时标记为 draft（需人工审核）而非 escalate\n// 这是更安全的选择，避免误判为高风险\nreturn [{\n  json: {\n    status: 'needs_review',\n    classification: 'draft',\n    reason: 'AI 分类服务暂时不可用，已标记为待审核: ' + (error.message || 'Unknown error'),\n    riskLevel: 'medium',\n    reply: '感谢您的消息。我们的团队会尽快为您处理。',\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput,\n    errorDetails: JSON.stringify(error),\n    fallbackApplied: true\n  }\n}];"
       },
       "id": "handle-ai-error",
       "name": "Handle AI Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [1140, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_processing_log (\n  workflow_id,\n  action,\n  status,\n  details,\n  error_msg\n) VALUES (\n  'shopify-support-handler',\n  'ai_classification_fallback',\n  'degraded',\n  '{{ JSON.stringify($json) }}'::jsonb,\n  '{{ $json.reason }}'\n)",
+        "options": {}
+      },
+      "id": "log-degradation",
+      "name": "Log AI Degradation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1140, 660],
+      "credentials": {
+        "postgres": { "id": "postgres", "name": "PostgreSQL" }
+      },
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -270,7 +285,10 @@
       "credentials": {
         "slackApi": { "id": "slack-api", "name": "Slack API" }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
     },
     {
       "parameters": {
@@ -328,7 +346,15 @@
       "main": [[{ "node": "Route by Classification", "type": "main", "index": 0 }]]
     },
     "Handle AI Error": {
-      "main": [[{ "node": "Route by Classification", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          { "node": "Log AI Degradation", "type": "main", "index": 0 },
+          { "node": "Route by Classification", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Log AI Degradation": {
+      "main": [[]]
     },
     "Route by Classification": {
       "main": [

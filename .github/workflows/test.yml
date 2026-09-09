@@ -1,0 +1,189 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [main, feature_v2, develop]
+  pull_request:
+    branches: [main, feature_v2]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # 单元测试 + Lint
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test:run -- tests/unit
+        working-directory: apps/frontend
+
+      - name: Upload unit test coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-coverage
+          path: apps/frontend/coverage/
+
+  # n8n Workflow 集成测试
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: unit-tests
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: shopiflow_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start n8n test instance
+        run: |
+          docker run -d \
+            --name n8n-test \
+            -p 5678:5678 \
+            -e N8N_BASIC_AUTH_ACTIVE=false \
+            -e N8N_HOST=localhost \
+            -e N8N_PORT=5678 \
+            -e N8N_PROTOCOL=http \
+            -e WEBHOOK_URL=http://localhost:5678 \
+            -e EXECUTIONS_PROCESS=main \
+            -v ${{ github.workspace }}/n8n/workflows:/workflows:ro \
+            n8nio/n8n:latest
+
+      - name: Wait for n8n to be ready
+        run: |
+          timeout 120 bash -c 'until curl -f http://localhost:5678/healthz; do sleep 2; done'
+
+      - name: Initialize test database
+        run: |
+          PGPASSWORD=test_password psql -h localhost -p 5433 -U test_user -d shopiflow_test -f database/init.sql
+
+      - name: Import n8n workflows
+        run: |
+          chmod +x scripts/import-workflows-test.sh
+          ./scripts/import-workflows-test.sh
+        continue-on-error: true
+
+      - name: Run integration tests
+        env:
+          N8N_TEST_URL: http://localhost:5678
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: 5433
+          TEST_DB_NAME: shopiflow_test
+          TEST_DB_USER: test_user
+          TEST_DB_PASSWORD: test_password
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: npm run test:run -- tests/integration
+        working-directory: apps/frontend
+
+      - name: Print n8n logs on failure
+        if: failure()
+        run: docker logs n8n-test
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: apps/frontend/coverage/
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop n8n-test || true
+          docker rm n8n-test || true
+
+  # 构建验证
+  build-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: unit-tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        run: npm run build
+        env:
+          N8N_WEBHOOK_BASE_URL: http://localhost:5678
+          OPENROUTER_API_KEY: mock-key-for-build
+
+      - name: Check for TypeScript errors
+        run: npx tsc --noEmit
+        working-directory: apps/frontend
+
+  # 测试报告汇总
+  test-summary:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, build-check]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "## Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build Check: ${{ needs.build-check.result }}" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.unit-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.integration-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.build-check.result }}" != "success" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some tests failed. Please check the logs above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          fi

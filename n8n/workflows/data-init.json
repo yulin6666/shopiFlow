@@ -112,7 +112,7 @@
         "nodeCredentialType": "openAiApi",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"text-embedding-3-small\",\n  \"input\": \"{{ $json.text }}\"\n}",
+        "jsonBody": "={{ { \"model\": \"qwen/qwen3-embedding-8b\", \"input\": $json.text } }}",
         "options": {}
       },
       "id": "get-embeddings",

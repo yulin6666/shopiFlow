@@ -21,7 +21,7 @@ export default function SupportPage() {
   const handleLoadData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_N8N_WEBHOOK_BASE_URL}/webhook/data-init`, {
+      const res = await fetch('/api/admin/init-data', {
         method: 'POST',
       });
 
