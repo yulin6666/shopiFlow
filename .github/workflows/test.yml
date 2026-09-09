@@ -116,13 +116,20 @@ jobs:
 
           # 3. 激活 workflow（通过 REST API）
           echo "Activating workflow..."
-          workflow_ids=$(curl -s http://localhost:5678/api/v1/workflows | jq -r '.data[].id')
-          for id in $workflow_ids; do
-            echo "Activating workflow $id..."
-            curl -X PATCH http://localhost:5678/api/v1/workflows/$id \
-              -H "Content-Type: application/json" \
-              -d '{"active": true}' || true
-          done
+          response=$(curl -s http://localhost:5678/api/v1/workflows)
+          echo "API Response: $response"
+
+          workflow_ids=$(echo "$response" | jq -r '.data[]?.id // empty')
+          if [ -z "$workflow_ids" ]; then
+            echo "Warning: No workflows found or API returned unexpected format"
+          else
+            for id in $workflow_ids; do
+              echo "Activating workflow $id..."
+              curl -X PATCH http://localhost:5678/api/v1/workflows/$id \
+                -H "Content-Type: application/json" \
+                -d '{"active": true}' || true
+            done
+          fi
 
           echo "✓ Workflow imported and activated"
 
