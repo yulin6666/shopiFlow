@@ -1,0 +1,32 @@
+Summary
+I run a retail/e-commerce brand on Shopify and a wedding point of sale. I'm hiring someone to build automations and AI agents that replace repetitive work across the business.
+
+I want a builder who can look at how we operate, identify what should be automated, and build it — automations, AI agents, or the hardware/tooling setup needed to run them reliably.
+
+WHAT YOU'D BUILD
+- AI agents and automations that take repetitive tasks off our plate end-to-end
+- Integrations across our stack (Shopify, Klaviyo, HubSpot, Google, Meta, and the other tools we run on) so data and actions flow without manual copy-paste
+- Automated reports and internal docs we currently pull together by hand
+- Internal ops: updates, data entry, routing, cleanup
+- Customer-facing: outreach, support, follow-ups, lifecycle
+- Bottom line: anything we do over and over, I want automated
+
+YOU'RE A STRONG FIT IF YOU
+- Have shipped working automations or agents for real businesses (not just demos)
+- Are fluent with LLM APIs (Claude and OpenAI/GPT) and can explain when to use which
+- Know automation platforms (Zapier / Make / n8n) AND can drop into code (Python or JavaScript) when no-code hits a wall
+- Can own a problem end-to-end, including any setup or infrastructure needed to make it run
+- Communicate clearly and proactively
+
+BONUS
+- Experience connecting AI directly to tools (MCP, function calling, API integrations)
+- Experience with Shopify e-commerce / DTC brands and tools like Klaviyo, HubSpot, or Meta
+- You obsess over reliability: handling errors, edge cases, and things that break
+
+HOW TO APPLY (please read)
+1. Start your proposal with the word AUTOMATE so I know you read this.
+2. In 3-4 sentences, describe one automation you built for a business: the manual task it replaced and the result (time saved, money saved, errors reduced).
+3. Include a link, screenshot, or short Loom of something you've actually built.
+4. No generic copy-paste proposals.
+
+We'll start with a small paid test task. If it goes well, there is ongoing work.

@@ -1,0 +1,382 @@
+{
+  "id": "shopify-support-handler",
+  "name": "ShopiFow - Shopify Support (Direct)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopify-support",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Shopify Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "shopify-support"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || '';\nconst ticketId = body.ticketId || Date.now();\nconst customerName = body.customerName || 'Customer';\nconst customerEmail = body.customerEmail || '';\nconst platform = body.platform || 'shopify';\nconst orderId = body.orderId || null;\n\n// Input validation\nif (!message || message.trim().length === 0) {\n  throw new Error(`Invalid input: message is required. Received ticketId=${ticketId}`);\n}\n\n// Force-error mode for testing: pass through to trigger downstream AI Agent failure\nconst forceError = String(ticketId).startsWith('test-force-error-');\n\nreturn [{\n  json: {\n    ticketId,\n    customerName,\n    customerEmail,\n    platform,\n    orderId,\n    chatInput: 'Platform: ' + platform + '\\nMessage: ' + message + '\\nOrder ID: ' + (orderId || 'None'),\n    forceError\n  }\n}];"
+      },
+      "id": "parse-input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-message",
+              "leftValue": "={{ $json.chatInput }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "content": "Input validation failed",
+        "errorMessage": "={{ $json.chatInput || 'Empty message received' }}"
+      },
+      "id": "stop-on-invalid",
+      "name": "Stop on Invalid Input",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [660, 480]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.forceError ? $json.nonExistentField.causeError : $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a customer support AI for a Shopify store.\n\nIMPORTANT INSTRUCTIONS:\n1. ALWAYS use the Shopify Data tool to query the knowledge base before answering questions about products, orders, inventory, or pricing.\n2. After getting results from the tool, CAREFULLY FILTER the data based on what the customer asked:\n   - If asking about a specific brand/vendor (e.g., \"NIKE products\"), ONLY include records where metadata.vendor matches OR the product name contains that brand\n   - If asking about products, ONLY use records where metadata.type=\"product\"\n   - If asking about orders, ONLY use records where metadata.type=\"order\"\n   - IGNORE irrelevant results even if they appear in the tool output\n3. DO NOT make up prices, stock levels, or product details - only use information from the filtered results\n4. After filtering and answering, classify the message and respond in JSON format\n\nClassify into ONE of three categories:\n\n1. \"auto\" - Standard informational questions that can be answered directly:\n   - Order tracking / shipping status (\"Where is my order?\", \"What's the status of order #1180?\")\n   - Product inquiries / availability (\"List all NIKE products\", \"Do you have ADIDAS backpacks?\")\n   - Policy questions (\"What's your return policy?\", \"Do you offer free shipping?\")\n   - General store info\n\n2. \"draft\" - Requests that need human review before sending:\n   - ANY message containing: \"refund\", \"cancel order\", \"return order\", \"complaint\", \"disappointed\", \"not satisfied\"\n   - Discount/coupon requests (\"Do you have discount codes?\")\n   - Order modifications (\"Can I add items?\", \"Can I change my order?\")\n   - Return requests (\"I want to return\")\n\n3. \"escalate\" - High-risk messages requiring immediate human intervention:\n   - ANY message containing: \"sue\", \"lawyer\", \"legal\", \"chargeback\", \"dispute\", \"fraud\"\n   - Health/safety issues: \"allergic\", \"reaction\", \"sick\", \"injured\", \"unsafe\"\n   - Payment disputes: \"charged twice\", \"billed incorrectly\"\n   - Extreme emotions: \"terrible\", \"worst\", \"angry\", \"furious\", \"unacceptable\"\n   - Threats or demands for manager\n\nYou MUST respond in JSON format only:\n{\n  \"classification\": \"auto|draft|escalate\",\n  \"reason\": \"brief explanation\",\n  \"risk_level\": \"low|medium|high\",\n  \"reply\": \"draft reply text (for auto and draft only, null for escalate)\"\n}"
+        }
+      },
+      "id": "ai-agent",
+      "name": "Shopify AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [900, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4-6",
+        "options": {}
+      },
+      "id": "llm-model",
+      "name": "OpenRouter Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [800, 520],
+      "credentials": {
+        "openAiApi": { "id": "openrouter-openai-api", "name": "OpenRouter (OpenAI-compatible)" }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this tool to look up Shopify order information including shipping status, tracking numbers, order details, and customer purchase history. Search by order number or customer email.",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "shopiflow-doc",
+          "mode": "list",
+          "cachedResultName": "shopiflow-doc"
+        },
+        "topK": 3,
+        "options": {}
+      },
+      "id": "pinecone-tool",
+      "name": "Shopify Data (Pinecone)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1,
+      "position": [1000, 520],
+      "credentials": {
+        "pineconeApi": { "id": "pinecone-api", "name": "Pinecone API" }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-embedding-8b",
+        "options": {}
+      },
+      "id": "embeddings",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [1000, 680],
+      "credentials": {
+        "openAiApi": { "id": "openai-api", "name": "OpenAI API" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || '{}';\nlet parsed;\ntry {\n  const cleaned = agentOutput.replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(match ? match[0] : cleaned);\n} catch (parseError) {\n  parsed = { classification: 'escalate', reason: 'AI output parse error', risk_level: 'high', reply: null };\n}\n\nconst ticket = $('Parse Input').first().json;\nconst classification = parsed.classification || 'escalate';\n\nif (!['auto', 'draft', 'escalate'].includes(classification)) {\n  parsed.classification = 'escalate';\n  parsed.reason = 'Invalid classification: ' + classification;\n}\n\nlet status;\nif (classification === 'auto') status = 'auto_replied';\nelse if (classification === 'draft') status = 'needs_review';\nelse status = 'escalated';\n\nreturn [{\n  json: {\n    status,\n    classification: parsed.classification,\n    reason: parsed.reason || '',\n    riskLevel: parsed.risk_level || 'high',\n    reply: parsed.reply || null,\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput\n  }\n}];"
+      },
+      "id": "merge-result",
+      "name": "Parse Classification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticket = $('Parse Input').first().json;\nconst error = $input.first().json.error || {};\n\n// 降级兜底逻辑：AI 失败时标记为 draft（需人工审核）而非 escalate\n// 这是更安全的选择，避免误判为高风险\nreturn [{\n  json: {\n    status: 'needs_review',\n    classification: 'draft',\n    reason: 'AI 分类服务暂时不可用，已标记为待审核: ' + (error.message || 'Unknown error'),\n    riskLevel: 'medium',\n    reply: '感谢您的消息。我们的团队会尽快为您处理。',\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput,\n    errorDetails: JSON.stringify(error),\n    fallbackApplied: true\n  }\n}];"
+      },
+      "id": "handle-ai-error",
+      "name": "Handle AI Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_processing_log (\n  workflow_id,\n  action,\n  status,\n  details,\n  error_msg\n) VALUES (\n  'shopify-support-handler',\n  'ai_classification_fallback',\n  'degraded',\n  '{{ JSON.stringify($json) }}'::jsonb,\n  '{{ $json.reason }}'\n)",
+        "options": {}
+      },
+      "id": "log-degradation",
+      "name": "Log AI Degradation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1140, 660],
+      "credentials": {
+        "postgres": { "id": "postgres", "name": "PostgreSQL" }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "auto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "auto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "draft",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "draft"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "escalate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "escalate"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "route-by-classification",
+      "name": "Route by Classification",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1380, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: $json.reply, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
+        "options": {}
+      },
+      "id": "respond-auto",
+      "name": "Respond (Auto)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1620, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: $json.reply, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
+        "options": {}
+      },
+      "id": "respond-draft",
+      "name": "Respond (Draft)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1620, 300]
+    },
+    {
+      "parameters": {
+        "content": "🚨 **Shopify Support Escalation**\n\n**Ticket ID:** {{ $json.ticketId }}\n**Customer:** {{ $json.customerName }} ({{ $json.customerEmail }})\n**Platform:** {{ $json.platform }}\n**Risk Level:** {{ $json.riskLevel }}\n\n**Reason:** {{ $json.reason }}\n\n**Original Message:**\n```\n{{ $json.originalMessage }}\n```\n\n⚠️ This ticket requires immediate human attention.",
+        "options": {}
+      },
+      "id": "slack-notification",
+      "name": "Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1620, 500],
+      "credentials": {
+        "slackApi": { "id": "slack-api", "name": "Slack API" }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: null, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
+        "options": {}
+      },
+      "id": "respond-escalate",
+      "name": "Respond (Escalate)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1860, 500]
+    },
+    {
+      "parameters": {
+        "content": "Unhandled classification",
+        "errorMessage": "={{ 'Classification route failed: ' + $json.classification }}"
+      },
+      "id": "stop-on-invalid-route",
+      "name": "Stop on Invalid Route",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [1620, 700]
+    }
+  ],
+  "connections": {
+    "Shopify Webhook": {
+      "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
+    },
+    "Parse Input": {
+      "main": [[{ "node": "Validate Input", "type": "main", "index": 0 }]]
+    },
+    "Validate Input": {
+      "main": [
+        [{ "node": "Shopify AI Agent", "type": "main", "index": 0 }],
+        [{ "node": "Stop on Invalid Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [[{ "node": "Shopify AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Shopify Data (Pinecone)": {
+      "ai_tool": [[{ "node": "Shopify AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [[{ "node": "Shopify Data (Pinecone)", "type": "ai_embedding", "index": 0 }]]
+    },
+    "Shopify AI Agent": {
+      "main": [
+        [{ "node": "Parse Classification", "type": "main", "index": 0 }],
+        [{ "node": "Handle AI Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Classification": {
+      "main": [[{ "node": "Route by Classification", "type": "main", "index": 0 }]]
+    },
+    "Handle AI Error": {
+      "main": [
+        [
+          { "node": "Log AI Degradation", "type": "main", "index": 0 },
+          { "node": "Route by Classification", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Log AI Degradation": {
+      "main": [[]]
+    },
+    "Route by Classification": {
+      "main": [
+        [{ "node": "Respond (Auto)", "type": "main", "index": 0 }],
+        [{ "node": "Respond (Draft)", "type": "main", "index": 0 }],
+        [{ "node": "Slack Alert", "type": "main", "index": 0 }],
+        [{ "node": "Stop on Invalid Route", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack Alert": {
+      "main": [[{ "node": "Respond (Escalate)", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "shopiflow-error-handler-global"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-13T00:00:00.000Z",
+  "versionId": "shopiflow-shopify-support-v4"
+}

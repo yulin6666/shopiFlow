@@ -1,0 +1,29 @@
+{
+  "name": "shopiflow",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "setup": "./setup.sh",
+    "dev": "npm --workspace=apps/frontend run dev",
+    "build": "npm --workspace=apps/frontend run build",
+    "start": "npm --workspace=apps/frontend run start",
+    "lint": "npm --workspace=apps/frontend run lint",
+    "test": "vitest --config vitest.config.ts",
+    "test:run": "vitest run --config vitest.config.ts",
+    "test:unit": "vitest run --config vitest.config.ts tests/unit",
+    "test:integration": "vitest run --config vitest.config.ts tests/integration",
+    "test:ui": "vitest --ui --config vitest.config.ts",
+    "test:coverage": "vitest run --coverage --config vitest.config.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "vitest": "^1.6.0",
+    "@vitest/ui": "^1.6.0",
+    "pg": "^8.12.0",
+    "@types/pg": "^8.11.6",
+    "dotenv": "^16.4.5"
+  }
+}

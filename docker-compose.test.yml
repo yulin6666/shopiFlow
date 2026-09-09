@@ -1,0 +1,47 @@
+services:
+  # n8n 测试实例
+  n8n-test:
+    image: n8nio/n8n:latest
+    container_name: shopiflow-n8n-test
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678
+      - EXECUTIONS_PROCESS=main
+      - N8N_LOG_LEVEL=info
+      - NODE_ENV=test
+    ports:
+      - "5679:5678"  # 避免与现有 n8n 冲突
+    volumes:
+      - ./n8n/workflows:/workflows:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # PostgreSQL 测试数据库
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: shopiflow-postgres-test
+    environment:
+      - POSTGRES_DB=shopiflow_test
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d shopiflow_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+networks:
+  default:
+    name: shopiflow-test-network

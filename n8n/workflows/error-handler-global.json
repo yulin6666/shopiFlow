@@ -1,0 +1,76 @@
+{
+  "id": "error-handler-global",
+  "name": "ShopiFow - Global Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst execution = input.execution || {};\nconst error = execution.error || input.error || {};\n\n// Workflow name: extract from execution URL\nconst url = execution.url || '';\nconst workflowId = url.match(/\\/workflow\\/([^\\/]+)\\//)?.[1] || 'N/A';\nconst workflow = `Workflow ID: ${workflowId}`;\n\n// Failed node is on execution, not error\nconst node = execution.lastNodeExecuted || error.lastNodeExecuted || 'Unknown Node';\n\n// Error message is on execution.error\nconst message = error.message || error.description || 'No error message';\n\nconst executionId = execution.id || 'N/A';\nconst timestamp = new Date().toISOString();\n\nconst slackMessage = `🔥 *n8n Workflow Error Alert*\\n\\n*${workflow}*\\n*Failed Node:* ${node}\\n*Execution ID:* ${executionId}\\n*Time:* ${timestamp}\\n\\n*Error Message:*\\n\\`\\`\\`\\n${message}\\n\\`\\`\\`\\n\\n🔗 <${url}|View Execution>`;\n\nreturn [{\n  json: {\n    timestamp, workflow, node, message, executionId,\n    errorDetails: JSON.stringify(input, null, 2),\n    severity: 'high',\n    text: slackMessage\n  }\n}];"
+      },
+      "id": "format-error",
+      "name": "Format Error Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ text: $json.text }) }}",
+        "options": {
+          "ignoreResponseCode": true
+        }
+      },
+      "id": "slack-webhook",
+      "name": "Slack - Send Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ai_processing_log (action_type, details, success, error_msg, created_at)\nVALUES (\n  'workflow_error',\n  '{{ $json.errorDetails }}',\n  false,\n  '{{ $json.message }}',\n  NOW()\n)",
+        "options": {}
+      },
+      "id": "log-to-db",
+      "name": "Log to PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [960, 300],
+      "credentials": {
+        "postgres": { "id": "postgres-credentials", "name": "PostgreSQL" }
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{ "node": "Format Error Details", "type": "main", "index": 0 }]]
+    },
+    "Format Error Details": {
+      "main": [[{ "node": "Slack - Send Alert", "type": "main", "index": 0 }]]
+    },
+    "Slack - Send Alert": {
+      "main": [[{ "node": "Log to PostgreSQL", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": ["error-handling"],
+  "triggerCount": 0,
+  "updatedAt": "2026-08-14T00:00:00.000Z",
+  "versionId": "shopiflow-error-handler-v2"
+}
