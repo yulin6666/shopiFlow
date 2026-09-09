@@ -32,15 +32,14 @@ jobs:
         run: npm run lint
 
       - name: Run unit tests
-        run: npm run test:run -- tests/unit
-        working-directory: apps/frontend
+        run: npm run test:unit
 
       - name: Upload unit test coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: unit-test-coverage
-          path: apps/frontend/coverage/
+          path: coverage/
 
   # n8n Workflow 集成测试
   integration-tests:
@@ -80,28 +79,30 @@ jobs:
         run: |
           docker run -d \
             --name n8n-test \
-            -p 5678:5678 \
+            --network host \
             -e N8N_BASIC_AUTH_ACTIVE=false \
             -e N8N_HOST=localhost \
             -e N8N_PORT=5678 \
             -e N8N_PROTOCOL=http \
             -e WEBHOOK_URL=http://localhost:5678 \
             -e EXECUTIONS_PROCESS=main \
-            -v ${{ github.workspace }}/n8n/workflows:/workflows:ro \
+            -e N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN=true \
             n8nio/n8n:latest
 
       - name: Wait for n8n to be ready
         run: |
-          timeout 120 bash -c 'until curl -f http://localhost:5678/healthz; do sleep 2; done'
+          timeout 120 bash -c 'until curl -sf http://localhost:5678/healthz; do echo "waiting..."; sleep 3; done'
 
       - name: Initialize test database
         run: |
           PGPASSWORD=test_password psql -h localhost -p 5433 -U test_user -d shopiflow_test -f database/init.sql
 
-      - name: Import n8n workflows
+      - name: Import n8n workflows via CLI
         run: |
-          chmod +x scripts/import-workflows-test.sh
-          ./scripts/import-workflows-test.sh
+          for f in n8n/workflows/*.json; do
+            echo "Importing $f..."
+            docker exec n8n-test n8n import:workflow --input=/data/workflows/$(basename $f) || true
+          done
         continue-on-error: true
 
       - name: Run integration tests
@@ -113,8 +114,7 @@ jobs:
           TEST_DB_USER: test_user
           TEST_DB_PASSWORD: test_password
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: npm run test:run -- tests/integration
-        working-directory: apps/frontend
+        run: npm run test:integration
 
       - name: Print n8n logs on failure
         if: failure()
@@ -125,7 +125,7 @@ jobs:
         if: always()
         with:
           name: integration-test-results
-          path: apps/frontend/coverage/
+          path: coverage/
 
       - name: Cleanup
         if: always()
