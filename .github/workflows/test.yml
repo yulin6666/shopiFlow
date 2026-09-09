@@ -99,22 +99,23 @@ jobs:
 
       - name: Import and activate n8n workflows
         run: |
-          for f in n8n/workflows/*.json; do
-            filename=$(basename "$f")
-            echo "Processing $filename..."
+          # 仅导入测试需要的 workflow
+          workflow="n8n/workflows/shopify-support-handler.json"
+          filename=$(basename "$workflow")
 
-            # 1. 复制文件到容器内
-            docker cp "$f" n8n-test:/tmp/"$filename"
+          echo "Importing $filename..."
 
-            # 2. 导入 workflow
-            docker exec n8n-test n8n import:workflow --input=/tmp/"$filename"
-          done
+          # 1. 复制文件到容器内
+          docker cp "$workflow" n8n-test:/tmp/"$filename"
+
+          # 2. 导入 workflow
+          docker exec n8n-test n8n import:workflow --input=/tmp/"$filename"
 
           # 等待 n8n 处理导入
           sleep 3
 
-          # 3. 激活所有 workflows（通过 REST API）
-          echo "Activating workflows..."
+          # 3. 激活 workflow（通过 REST API）
+          echo "Activating workflow..."
           workflow_ids=$(curl -s http://localhost:5678/api/v1/workflows | jq -r '.data[].id')
           for id in $workflow_ids; do
             echo "Activating workflow $id..."
@@ -123,7 +124,7 @@ jobs:
               -d '{"active": true}' || true
           done
 
-          echo "✓ All workflows imported and activated"
+          echo "✓ Workflow imported and activated"
 
       - name: Run integration tests
         env:
