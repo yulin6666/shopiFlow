@@ -1,4 +1,5 @@
 {
+  "id": "error-handler-global",
   "name": "ShopiFow - Global Error Handler",
   "nodes": [
     {

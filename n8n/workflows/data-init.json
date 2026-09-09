@@ -1,4 +1,5 @@
 {
+  "id": "data-init",
   "name": "ShopiFow - Data Init (Pinecone)",
   "nodes": [
     {
