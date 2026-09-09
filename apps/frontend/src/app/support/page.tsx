@@ -136,7 +136,7 @@ export default function SupportPage() {
               <span className="text-emerald-600 font-bold text-lg">✓</span>
               <div>
                 <strong className="text-emerald-700">Auto-reply (70-80% of queries)</strong>
-                <p className="text-gray-600 mt-1">Standard questions like "Where is my order?", "What's your return policy?", or product FAQs — AI responds instantly.</p>
+                <p className="text-gray-600 mt-1">Standard questions like &ldquo;Where is my order?&rdquo;, &ldquo;What&rsquo;s your return policy?&rdquo;, or product FAQs — AI responds instantly.</p>
               </div>
             </div>
             <div className="flex items-start gap-2">

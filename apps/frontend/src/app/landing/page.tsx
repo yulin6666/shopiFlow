@@ -30,7 +30,7 @@ export default function LandingPage() {
               <span className="text-emerald-600 font-bold text-xl">✓</span>
               <div>
                 <strong className="text-emerald-700">Auto-reply</strong>
-                <span className="text-gray-600"> — Standard FAQs like "Where is my order?" or "What's your return policy?"</span>
+                <span className="text-gray-600"> — Standard FAQs like &ldquo;Where is my order?&rdquo; or &ldquo;What&rsquo;s your return policy?&rdquo;</span>
               </div>
             </div>
             <div className="flex items-start gap-3">
