@@ -7,6 +7,7 @@ export default defineConfig({
     exclude: ['node_modules', 'dist', '.next'],
     globals: true,
     environment: 'node',
+    pool: 'forks', // 使用 forks 模式避免 DataCloneError（axios 实例含函数无法被 structuredClone）
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30000, // n8n workflow 执行可能需要较长时间
     hookTimeout: 30000,
