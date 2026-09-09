@@ -97,13 +97,33 @@ jobs:
         run: |
           PGPASSWORD=test_password psql -h localhost -p 5433 -U test_user -d shopiflow_test -f database/init.sql
 
-      - name: Import n8n workflows via CLI
+      - name: Import and activate n8n workflows
         run: |
           for f in n8n/workflows/*.json; do
-            echo "Importing $f..."
-            docker exec n8n-test n8n import:workflow --input=/data/workflows/$(basename $f) || true
+            filename=$(basename "$f")
+            echo "Processing $filename..."
+
+            # 1. 复制文件到容器内
+            docker cp "$f" n8n-test:/tmp/"$filename"
+
+            # 2. 导入 workflow
+            docker exec n8n-test n8n import:workflow --input=/tmp/"$filename"
           done
-        continue-on-error: true
+
+          # 等待 n8n 处理导入
+          sleep 3
+
+          # 3. 激活所有 workflows（通过 REST API）
+          echo "Activating workflows..."
+          workflow_ids=$(curl -s http://localhost:5678/api/v1/workflows | jq -r '.data[].id')
+          for id in $workflow_ids; do
+            echo "Activating workflow $id..."
+            curl -X PATCH http://localhost:5678/api/v1/workflows/$id \
+              -H "Content-Type: application/json" \
+              -d '{"active": true}' || true
+          done
+
+          echo "✓ All workflows imported and activated"
 
       - name: Run integration tests
         env:
