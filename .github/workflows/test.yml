@@ -126,7 +126,7 @@ jobs:
       - name: Build Next.js app
         run: npm run build
         env:
-          N8N_WEBHOOK_BASE_URL: http://localhost:5678
+          N8N_WEBHOOK_BASE_URL: https://n8n-production-fee8.up.railway.app
           OPENROUTER_API_KEY: mock-key-for-build
 
       - name: Check for TypeScript errors

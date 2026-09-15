@@ -4,7 +4,7 @@ import { DbClient } from '../../helpers/db-client';
 import { SUPPORT_FIXTURES } from '../../helpers/fixtures';
 
 describe('n8n Workflow Integration - Support Handler', () => {
-  const n8n = new N8nClient(process.env.N8N_TEST_URL || 'http://localhost:5678');
+  const n8n = new N8nClient(process.env.N8N_TEST_URL || 'https://n8n-production-fee8.up.railway.app');
   const db = new DbClient();
 
   // 等待服务就绪
@@ -14,9 +14,9 @@ describe('n8n Workflow Integration - Support Handler', () => {
   }, 60000);
 
   // 每个测试后清理测试数据
-  afterEach(async () => {
-    await db.cleanupTestData();
-  });
+  // afterEach(async () => {
+  //   await db.cleanupTestData();
+  // });
 
   describe('正常分类场景', () => {
     it('should classify order query as auto', async () => {

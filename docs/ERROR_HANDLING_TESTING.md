@@ -56,7 +56,7 @@
 
 ### 1. 导入全局错误处理 Workflow
 
-1. 打开 n8n（http://localhost:5678）
+1. 打开 n8n（https://n8n-production-fee8.up.railway.app）
 2. 点击右上角 **+** → **Import from File**
 3. 选择 `n8n/workflows/error-handler-global.json`
 4. **检查配置**：
@@ -95,7 +95,7 @@
 
 **Gorgias - 自动回复**
 ```bash
-curl -X POST http://localhost:5678/webhook/gorgias-support \
+curl -X POST https://n8n-production-fee8.up.railway.app/webhook/gorgias-support \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Where is my order?",
@@ -114,7 +114,7 @@ curl -X POST http://localhost:5678/webhook/gorgias-support \
 
 **空消息**
 ```bash
-curl -X POST http://localhost:5678/webhook/gorgias-support \
+curl -X POST https://n8n-production-fee8.up.railway.app/webhook/gorgias-support \
   -H "Content-Type: application/json" \
   -d '{
     "message": "",
@@ -133,7 +133,7 @@ curl -X POST http://localhost:5678/webhook/gorgias-support \
 
 **非法 platform**
 ```bash
-curl -X POST http://localhost:5678/webhook/gorgias-support \
+curl -X POST https://n8n-production-fee8.up.railway.app/webhook/gorgias-support \
   -H "Content-Type: application/json" \
   -d '{
     "message": "test",
@@ -156,7 +156,7 @@ curl -X POST http://localhost:5678/webhook/gorgias-support \
 3. 临时删除 credential
 4. 发送测试请求：
 ```bash
-curl -X POST http://localhost:5678/webhook/gorgias-support \
+curl -X POST https://n8n-production-fee8.up.railway.app/webhook/gorgias-support \
   -H "Content-Type: application/json" \
   -d '{
     "message": "I need help with my order",
@@ -178,7 +178,7 @@ curl -X POST http://localhost:5678/webhook/gorgias-support \
 1. 临时删除 Pinecone credential
 2. 发送包含订单查询的请求：
 ```bash
-curl -X POST http://localhost:5678/webhook/shopify-support \
+curl -X POST https://n8n-production-fee8.up.railway.app/webhook/shopify-support \
   -H "Content-Type: application/json" \
   -d '{
     "message": "What is the status of order #1234?",
@@ -231,7 +231,7 @@ curl -X POST http://localhost:5678/webhook/shopify-support \
 ### 测试 7：Judge.me Review - 非法 rating
 
 ```bash
-curl -X POST http://localhost:5678/webhook/judgeme-review \
+curl -X POST https://n8n-production-fee8.up.railway.app/webhook/judgeme-review \
   -H "Content-Type: application/json" \
   -d '{
     "rating": 10,
@@ -252,7 +252,7 @@ curl -X POST http://localhost:5678/webhook/judgeme-review \
 1. 临时删除 OpenRouter credential（Judge.me workflow）
 2. 发送请求：
 ```bash
-curl -X POST http://localhost:5678/webhook/judgeme-review \
+curl -X POST https://n8n-production-fee8.up.railway.app/webhook/judgeme-review \
   -H "Content-Type: application/json" \
   -d '{
     "rating": 5,

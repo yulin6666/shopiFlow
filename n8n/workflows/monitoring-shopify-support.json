@@ -1,0 +1,353 @@
+{
+  "name": "Monitoring: shopify-support-handler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "2c3a0e12-8f5e-4a29-b1a5-3d4f6e7a8b9c",
+      "name": "Schedule: Every 5 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "REFRESH MATERIALIZED VIEW CONCURRENTLY monitoring_metrics_mv;\nREFRESH MATERIALIZED VIEW monitoring_summary_mv;",
+        "options": {}
+      },
+      "id": "4a5b6c7d-8e9f-0a1b-2c3d-4e5f6a7b8c9d",
+      "name": "Refresh Materialized Views",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        460,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-shopiflow",
+          "name": "PostgreSQL (ShopiFow)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  total_executions_24h,\n  success_rate_pct,\n  degradation_rate_pct,\n  p95_latency_ms,\n  last_execution_at\nFROM monitoring_summary_mv\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "5b6c7d8e-9f0a-1b2c-3d4e-5f6a7b8c9d0e",
+      "name": "Query Summary Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        680,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-shopiflow",
+          "name": "PostgreSQL (ShopiFow)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "alert-success-rate",
+              "leftValue": "={{ Number($json.success_rate_pct ?? 100) }}",
+              "rightValue": 90,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            },
+            {
+              "id": "alert-degradation-rate",
+              "leftValue": "={{ Number($json.degradation_rate_pct ?? 0) }}",
+              "rightValue": 10,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "alert-p95-latency",
+              "leftValue": "={{ Number($json.p95_latency_ms ?? 0) }}",
+              "rightValue": 10000,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combineOperation": "any"
+        },
+        "options": {}
+      },
+      "id": "6c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f",
+      "name": "Check Alert Thresholds",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-production-fee8.up.railway.app/webhook/shopify-support",
+        "authentication": "none",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "Health check probe from monitoring system"
+            },
+            {
+              "name": "ticketId",
+              "value": "probe-{{ $now.toUnixInteger() }}"
+            },
+            {
+              "name": "customerName",
+              "value": "Monitoring System"
+            },
+            {
+              "name": "customerEmail",
+              "value": "monitoring@shopiflow.internal"
+            },
+            {
+              "name": "platform",
+              "value": "shopify"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "9f0a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c",
+      "name": "Active Health Probe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        450
+      ],
+      "notes": "主动探测：每 5 分钟发送一次测试请求"
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list",
+          "cachedResultName": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "ai_processing_log",
+          "mode": "list",
+          "cachedResultName": "ai_processing_log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "workflow_id": "monitoring-probe",
+            "action": "health_check",
+            "status": "={{ $json.ok ? 'success' : 'failed' }}",
+            "details": "={{ { latency_ms: $json.statusCode ? 0 : -1, status_code: $json.statusCode || 0, probe_time: $now.toISO() } }}",
+            "error_msg": "={{ $json.error || null }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "workflow_id",
+              "displayName": "workflow_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "details",
+              "displayName": "details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "json",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "error_msg",
+              "displayName": "error_msg",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+      "name": "Log Probe Result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1120,
+        450
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-shopiflow",
+          "name": "PostgreSQL (ShopiFow)"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
+      "name": "No Alert Needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        350
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule: Every 5 minutes": {
+      "main": [
+        [
+          {
+            "node": "Refresh Materialized Views",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh Materialized Views": {
+      "main": [
+        [
+          {
+            "node": "Query Summary Metrics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Active Health Probe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Summary Metrics": {
+      "main": [
+        [
+          {
+            "node": "Check Alert Thresholds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Alert Thresholds": {
+      "main": [
+        [
+          {
+            "node": "No Alert Needed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Alert Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Active Health Probe": {
+      "main": [
+        [
+          {
+            "node": "Log Probe Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2026-09-10T00:00:00.000Z",
+      "updatedAt": "2026-09-10T00:00:00.000Z",
+      "id": "monitoring",
+      "name": "monitoring"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-09-10T00:00:00.000Z",
+  "versionId": "1"
+}

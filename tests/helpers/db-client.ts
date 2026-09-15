@@ -5,10 +5,15 @@ export class DbClient {
   private pool: Pool;
 
   constructor() {
-    this.pool = new Pool({
+    const config: any = {
       ...TEST_CONFIG.database,
-      // 数据库连接不走代理
-    });
+      // Railway PostgreSQL requires SSL
+      ssl: TEST_CONFIG.database.host !== 'localhost'
+        ? { rejectUnauthorized: false }
+        : false,
+    };
+
+    this.pool = new Pool(config);
   }
 
   async query(sql: string, params?: any[]): Promise<QueryResult> {

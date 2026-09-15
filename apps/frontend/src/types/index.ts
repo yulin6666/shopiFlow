@@ -190,3 +190,71 @@ export interface ReviewReplyResponse {
   reply: string;
   language: string;
 }
+
+// ---- Monitoring ----
+
+export interface MonitoringMetricsSummary {
+  totalExecutions24h: number;
+  successRatePct: number;
+  degradationRatePct: number;
+  avgLatencyMs: number;
+  p95LatencyMs: number;
+  avgAiCallMs: number;
+  lastExecutionAt: string | null;
+  autoCount: number;
+  draftCount: number;
+  escalateCount: number;
+}
+
+export interface MonitoringMetricsByHour {
+  timeBucket: string;
+  totalExecutions: number;
+  successCount: number;
+  failedCount: number;
+  degradedCount: number;
+  p50LatencyMs: number;
+  p95LatencyMs: number;
+  p99LatencyMs: number;
+  avgLatencyMs: number;
+  autoCount: number;
+  draftCount: number;
+  escalateCount: number;
+}
+
+export interface MonitoringRecentError {
+  id: string;
+  createdAt: string;
+  errorMsg: string;
+  details: any;
+  n8nExecutionId?: string;
+  n8nWorkflowId?: string;
+  n8nWorkflowName?: string;
+  failedNode?: string;
+  ticketId?: string;
+}
+
+export interface MonitoringRecentExecution {
+  id: string;
+  createdAt: string;
+  status: string;
+  classification: string;
+  executionTimeMs: number;
+  aiCallTimeMs: number;
+  ticketId: string;
+  riskLevel: string;
+}
+
+export interface MonitoringMetricsResponse {
+  summary: MonitoringMetricsSummary;
+  hourlyMetrics: MonitoringMetricsByHour[];
+  recentErrors: MonitoringRecentError[];
+  recentExecutions: MonitoringRecentExecution[];
+}
+
+export interface HealthProbeResult {
+  healthy: boolean;
+  status?: number;
+  latencyMs: number | null;
+  response?: any;
+  error?: string;
+}

@@ -15,7 +15,7 @@ export class N8nClient {
   private client: AxiosInstance;
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:5678') {
+  constructor(baseUrl: string = 'https://n8n-production-fee8.up.railway.app') {
     this.baseUrl = baseUrl;
 
     // 清除可能影响 localhost 的代理环境变量

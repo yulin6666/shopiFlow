@@ -1,13 +1,14 @@
 import { config } from 'dotenv';
 import path from 'path';
 
-// 加载测试环境变量
+// 加载测试环境变量（.env.test.local 会覆盖 .env.test 的同名变量）
 config({ path: path.resolve(__dirname, '../.env.test') });
+config({ path: path.resolve(__dirname, '../.env.test.local'), override: true });
 
 // 全局测试配置
 export const TEST_CONFIG = {
   n8n: {
-    baseUrl: process.env.N8N_TEST_URL || 'http://localhost:5678',
+    baseUrl: process.env.N8N_TEST_URL || 'https://n8n-production-fee8.up.railway.app',
     webhookTimeout: 30000,
   },
   database: {

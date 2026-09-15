@@ -12,7 +12,7 @@ npm run dev
 
 打开浏览器：
 - 前端 → http://localhost:3000
-- n8n  → http://localhost:5678
+- n8n  → https://n8n-production-fee8.up.railway.app
 
 ---
 
@@ -183,7 +183,7 @@ GORGIAS_EMAIL=your@email.com
 GORGIAS_API_KEY=xxx
 
 # n8n webhook（本地默认不用改）
-N8N_WEBHOOK_BASE_URL=http://localhost:5678/webhook
+N8N_WEBHOOK_BASE_URL=https://n8n-production-fee8.up.railway.app/webhook
 ```
 
 ---
@@ -192,7 +192,7 @@ N8N_WEBHOOK_BASE_URL=http://localhost:5678/webhook
 
 ### 3.1 导入工作流
 
-1. 打开 http://localhost:5678（账号密码见 starter kit 的 `.env`）
+1. 打开 https://n8n-production-fee8.up.railway.app（账号密码见 starter kit 的 `.env`）
 2. 左侧 **Workflows** → 右上角 **⋮** → **Import from file**
 3. 依次导入：
    - `n8n/workflows/support-ticket-handler.json`

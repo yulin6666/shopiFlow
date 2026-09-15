@@ -1,5 +1,5 @@
 {
-  "id": "error-handler-global",
+  "id": "shopiflow-error-handler-global",
   "name": "ShopiFow - Global Error Handler",
   "nodes": [
     {
@@ -12,7 +12,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst execution = input.execution || {};\nconst error = execution.error || input.error || {};\n\n// Workflow name: extract from execution URL\nconst url = execution.url || '';\nconst workflowId = url.match(/\\/workflow\\/([^\\/]+)\\//)?.[1] || 'N/A';\nconst workflow = `Workflow ID: ${workflowId}`;\n\n// Failed node is on execution, not error\nconst node = execution.lastNodeExecuted || error.lastNodeExecuted || 'Unknown Node';\n\n// Error message is on execution.error\nconst message = error.message || error.description || 'No error message';\n\nconst executionId = execution.id || 'N/A';\nconst timestamp = new Date().toISOString();\n\nconst slackMessage = `🔥 *n8n Workflow Error Alert*\\n\\n*${workflow}*\\n*Failed Node:* ${node}\\n*Execution ID:* ${executionId}\\n*Time:* ${timestamp}\\n\\n*Error Message:*\\n\\`\\`\\`\\n${message}\\n\\`\\`\\`\\n\\n🔗 <${url}|View Execution>`;\n\nreturn [{\n  json: {\n    timestamp, workflow, node, message, executionId,\n    errorDetails: JSON.stringify(input, null, 2),\n    severity: 'high',\n    text: slackMessage\n  }\n}];"
+        "jsCode": "const input = $input.first().json;\nconst execution = input.execution || {};\nconst error = execution.error || input.error || {};\n\n// Extract execution details - execution.url is the direct link to this execution\nconst executionId = execution.id || 'N/A';\nconst workflowId = execution.workflowId || 'N/A';\nconst workflowName = execution.workflowName || 'shopify-support-handler';\nconst failedNode = execution.lastNodeExecuted || error.node?.name || 'Unknown Node';\nconst errorMessage = error.message || error.description || 'No error message';\nconst executionUrl = execution.url || 'N/A';\nconst timestamp = new Date().toISOString();\n\n// Extract ticket ID from execution data if available\nconst runData = execution.data?.resultData?.runData || {};\nlet ticketId = 'N/A';\nfor (const nodeName of ['Parse Input', 'Shopify Webhook']) {\n  const nodeData = runData[nodeName]?.[0]?.data?.main?.[0]?.[0]?.json;\n  if (nodeData?.ticketId) {\n    ticketId = nodeData.ticketId;\n    break;\n  }\n}\n\nreturn [{\n  json: {\n    timestamp,\n    workflowId,\n    workflowName,\n    executionId,\n    failedNode,\n    errorMessage,\n    ticketId,\n    executionUrl,\n    errorDetails: JSON.stringify(error, null, 2),\n    severity: 'high'\n  }\n}];"
       },
       "id": "format-error",
       "name": "Format Error Details",
@@ -22,35 +22,17 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
-        "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify({ text: $json.text }) }}",
-        "options": {
-          "ignoreResponseCode": true
-        }
-      },
-      "id": "slack-webhook",
-      "name": "Slack - Send Alert",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [720, 300]
-    },
-    {
-      "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO ai_processing_log (action_type, details, success, error_msg, created_at)\nVALUES (\n  'workflow_error',\n  '{{ $json.errorDetails }}',\n  false,\n  '{{ $json.message }}',\n  NOW()\n)",
+        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details, error_msg) VALUES ('\" + $json.workflowName + \"', 'workflow_error', 'failed', '\" + JSON.stringify({ ticketId: $json.ticketId, n8nExecutionId: $json.executionId, n8nWorkflowId: $json.workflowId, n8nWorkflowName: $json.workflowName, failedNode: $json.failedNode, executionUrl: $json.executionUrl, timestamp: $json.timestamp, severity: $json.severity }).replace(/'/g, \"''\") + \"'::jsonb, '\" + $json.errorMessage.replace(/'/g, \"''\") + \"')\" }}",
         "options": {}
       },
       "id": "log-to-db",
       "name": "Log to PostgreSQL",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [960, 300],
+      "position": [720, 300],
       "credentials": {
-        "postgres": { "id": "postgres-credentials", "name": "PostgreSQL" }
+        "postgres": { "id": "postgres-shopiflow", "name": "PostgreSQL (ShopiFow)" }
       },
       "continueOnFail": true
     }
@@ -60,9 +42,6 @@
       "main": [[{ "node": "Format Error Details", "type": "main", "index": 0 }]]
     },
     "Format Error Details": {
-      "main": [[{ "node": "Slack - Send Alert", "type": "main", "index": 0 }]]
-    },
-    "Slack - Send Alert": {
       "main": [[{ "node": "Log to PostgreSQL", "type": "main", "index": 0 }]]
     }
   },

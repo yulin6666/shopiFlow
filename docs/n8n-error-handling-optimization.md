@@ -473,7 +473,7 @@ git checkout HEAD~1 n8n/workflows/shopify-support-handler.json
 
 ### 7.2 手动回滚（n8n 界面）
 
-1. 登录 n8n 界面（http://localhost:5678）
+1. 登录 n8n 界面（https://n8n-production-fee8.up.railway.app）
 2. 进入工作流 "ShopiFow - Shopify Support (Direct)"
 3. 点击右上角 "Executions" → 找到改造前的执行记录
 4. 点击 "Restore this version"

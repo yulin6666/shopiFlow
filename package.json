@@ -11,19 +11,22 @@
     "build": "npm --workspace=apps/frontend run build",
     "start": "npm --workspace=apps/frontend run start",
     "lint": "npm --workspace=apps/frontend run lint",
-    "test": "vitest --config vitest.config.ts",
-    "test:run": "vitest run --config vitest.config.ts",
+    "test": "npx tsx scripts/reset-test-db.ts && vitest --config vitest.config.ts",
+    "test:run": "npx tsx scripts/reset-test-db.ts && vitest run --config vitest.config.ts",
     "test:unit": "vitest run --config vitest.config.ts tests/unit",
-    "test:integration": "vitest run --config vitest.config.ts tests/integration",
+    "test:integration": "npx tsx scripts/reset-test-db.ts && vitest run --config vitest.config.ts tests/integration",
     "test:ui": "vitest --ui --config vitest.config.ts",
     "test:coverage": "vitest run --coverage --config vitest.config.ts"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0",
-    "vitest": "^1.6.0",
-    "@vitest/ui": "^1.6.0",
-    "pg": "^8.12.0",
     "@types/pg": "^8.11.6",
-    "dotenv": "^16.4.5"
+    "@vitest/ui": "^1.6.0",
+    "concurrently": "^8.2.0",
+    "dotenv": "^16.4.5",
+    "global-agent": "^4.1.3",
+    "pg": "^8.12.0",
+    "socks": "^2.8.10",
+    "socks-proxy-agent": "^10.1.0",
+    "vitest": "^1.6.0"
   }
 }

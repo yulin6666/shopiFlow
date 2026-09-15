@@ -40,7 +40,7 @@ npm install
 
 ```bash
 # .env.test 已配置好默认值
-N8N_TEST_URL=http://localhost:5678
+N8N_TEST_URL=https://n8n-production-fee8.up.railway.app
 TEST_DB_HOST=localhost
 TEST_DB_PORT=5433
 TEST_DB_NAME=shopiflow_test
@@ -64,7 +64,7 @@ docker-compose -f docker-compose.test.yml up -d
 
 ```bash
 # 检查 n8n
-curl http://localhost:5678/healthz
+curl https://n8n-production-fee8.up.railway.app/healthz
 
 # 检查 PostgreSQL
 psql -h localhost -p 5433 -U test_user -d shopiflow_test -c "SELECT 1"
@@ -239,7 +239,7 @@ npm run test:run tests/integration/n8n-workflows/review-handler.test.ts
 ```typescript
 import { N8nClient } from '../helpers/n8n-client';
 
-const n8n = new N8nClient('http://localhost:5678');
+const n8n = new N8nClient('https://n8n-production-fee8.up.railway.app');
 
 // 触发 Support Handler
 const response = await n8n.triggerSupportWebhook({
@@ -335,7 +335,7 @@ REVIEW_FIXTURES.neutralReview    // 3星中立
 **解决**：
 ```bash
 # 手动检查 n8n 是否就绪
-curl http://localhost:5678/healthz
+curl https://n8n-production-fee8.up.railway.app/healthz
 
 # 如果失败，查看 n8n 日志
 docker logs shopiflow-n8n-test
@@ -346,7 +346,7 @@ docker logs shopiflow-n8n-test
 **原因**：n8n 中没有导入 workflow。
 
 **解决**：
-1. 打开 n8n UI：http://localhost:5678
+1. 打开 n8n UI：https://n8n-production-fee8.up.railway.app
 2. 手动导入 `n8n/workflows/*.json` 文件
 3. 确保 workflow 处于 Active 状态
 
@@ -370,7 +370,7 @@ docker-compose -f docker-compose.test.yml restart postgres-test
 **解决**：
 - 检查 `OPENROUTER_API_KEY` 是否有效
 - 检查 API 配额是否用尽
-- 查看 n8n 执行历史（http://localhost:5678 → Executions）
+- 查看 n8n 执行历史（https://n8n-production-fee8.up.railway.app → Executions）
 
 ### 5. 测试运行缓慢
 

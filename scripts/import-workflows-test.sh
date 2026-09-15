@@ -4,7 +4,7 @@ set -e
 # n8n workflow 导入脚本（测试环境）
 # 用于 CI/CD 中自动导入 workflow
 
-N8N_URL="${N8N_TEST_URL:-http://localhost:5678}"
+N8N_URL="${N8N_TEST_URL:-https://n8n-production-fee8.up.railway.app}"
 WORKFLOWS_DIR="${WORKFLOWS_DIR:-./n8n/workflows}"
 CONTAINER_NAME="${N8N_CONTAINER_NAME:-n8n-test}"
 

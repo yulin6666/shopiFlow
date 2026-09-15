@@ -184,10 +184,10 @@ SELECT * FROM ai_processing_log ORDER BY created_at DESC LIMIT 10;
 
 本地 `.env` 文件无需修改：
 ```bash
-N8N_WEBHOOK_BASE_URL=http://localhost:5678
+N8N_WEBHOOK_BASE_URL=https://n8n-production-fee8.up.railway.app
 DATABASE_URL=postgresql://root:password@localhost:5433/shopiflow_db
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_N8N_WEBHOOK_BASE_URL=http://localhost:5678
+NEXT_PUBLIC_N8N_WEBHOOK_BASE_URL=https://n8n-production-fee8.up.railway.app
 ```
 
 本地运行：

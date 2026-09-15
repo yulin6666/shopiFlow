@@ -41,7 +41,7 @@ sleep 8
 
 echo ""
 echo "🔄 Testing n8n webhook registration..."
-WEBHOOK_TEST=$(curl -s -X POST http://localhost:5678/webhook/shopify-support \
+WEBHOOK_TEST=$(curl -s -X POST https://n8n-production-fee8.up.railway.app/webhook/shopify-support \
   -H "Content-Type: application/json" \
   -d '{"message":"test"}' 2>&1 | grep -o "status" | head -1)
 
@@ -61,5 +61,5 @@ echo "✅ All services restarted!"
 echo ""
 echo "📊 Status:"
 echo "  - Next.js: http://localhost:3000"
-echo "  - n8n: http://localhost:5678"
+echo "  - n8n: https://n8n-production-fee8.up.railway.app"
 echo "  - Logs: tail -f /tmp/shopiflow-dev.log"
