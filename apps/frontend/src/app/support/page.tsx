@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import Link from 'next/link';
 import SupportChat from '@/components/support/SupportChat';
 import QuestionList from '@/components/support/QuestionList';
 import Button from '@/components/ui/Button';
@@ -44,22 +43,15 @@ export default function SupportPage() {
       {/* Top nav */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="text-lg font-semibold text-gray-900 hover:text-emerald-600">
-            ← ShopiFow AI Demo
-          </Link>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowInitPanel(!showInitPanel)}
-              className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
-            >
-              {dataLoaded ? '✓ Data Loaded' : '⚙️ Initialize KB'}
-            </button>
-            <Link href="/reviews">
-              <Button variant="secondary" size="sm">
-                ⭐ Review Replies
-              </Button>
-            </Link>
-          </div>
+          <h1 className="text-lg font-semibold text-gray-900">
+            ShopiFow AI Support Chat
+          </h1>
+          <button
+            onClick={() => setShowInitPanel(!showInitPanel)}
+            className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
+          >
+            {dataLoaded ? '✓ Data Loaded' : '⚙️ Initialize KB'}
+          </button>
         </div>
       </div>
 

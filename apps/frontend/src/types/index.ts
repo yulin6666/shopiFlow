@@ -81,25 +81,6 @@ export interface SupportChatState {
   sessionId: string | null;
 }
 
-// ---- Reviews ----
-
-export type ReviewPlatform = 'shopify' | 'amazon' | 'tiktok';
-export type ReviewStatus = 'pending' | 'replied' | 'generating';
-
-export interface Review {
-  id: string;
-  platform: ReviewPlatform;
-  author: string;
-  rating: number; // 1-5
-  title: string;
-  content: string;
-  date: string;
-  productName: string;
-  language: string;
-  status: ReviewStatus;
-  generatedReply?: string;
-}
-
 // ---- Automation ----
 
 export type WorkflowStatus = 'idle' | 'running' | 'success' | 'error';
@@ -124,22 +105,6 @@ export interface AutomationWorkflow {
     successRate: number;
     avgDuration: string;
   };
-}
-
-// ---- Dashboard KPIs ----
-
-export interface DashboardKPI {
-  label: string;
-  value: string | number;
-  change: string;
-  trend: 'up' | 'down' | 'neutral';
-  description: string;
-}
-
-export interface OrderTrendPoint {
-  date: string;
-  orders: number;
-  revenue: number;
 }
 
 // ---- Gorgias ----
@@ -184,11 +149,6 @@ export interface SupportQueryResponse {
   escalationReason?: string;
   draftReply?: string;
   source: TicketSource;
-}
-
-export interface ReviewReplyResponse {
-  reply: string;
-  language: string;
 }
 
 // ---- Monitoring ----

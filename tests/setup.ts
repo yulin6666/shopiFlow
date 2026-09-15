@@ -18,6 +18,9 @@ export const TEST_CONFIG = {
     user: process.env.TEST_DB_USER || 'test_user',
     password: process.env.TEST_DB_PASSWORD || 'test_password',
   },
+  frontend: {
+    baseUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  },
   // OpenRouter API Key 配置在 n8n credentials 中，不需要在测试环境里
 };
 

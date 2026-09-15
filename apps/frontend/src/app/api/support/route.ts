@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { EscalationLevel, TicketSource } from '@/types';
+import { checkRateLimit, getClientIdentifier } from '@/lib/rate-limiter';
 
 const N8N_WEBHOOK = process.env.N8N_WEBHOOK_BASE_URL;
 
@@ -25,7 +26,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'N8N_WEBHOOK_BASE_URL not configured' }, { status: 500 });
     }
 
-    // Route to different webhook based on platform
+    // 速率限制检查：每个 IP 每分钟最多 5 次请求
+    const identifier = getClientIdentifier(req);
+    const rateLimitResult = await checkRateLimit(identifier, '/api/support');
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded. Please try again later.',
+          retryAfter: Math.ceil((rateLimitResult.resetAt.getTime() - Date.now()) / 1000),
+        },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetAt.toISOString(),
+            'Retry-After': String(Math.ceil((rateLimitResult.resetAt.getTime() - Date.now()) / 1000)),
+          },
+        },
+      );
+    }
+
+    // 调用 n8n webhook
     const webhookPath = source === 'shopify' ? '/webhook/shopify-support' : '/webhook/gorgias-support';
 
     const n8nResponse = await axios.post(
@@ -63,14 +85,21 @@ export async function POST(req: NextRequest) {
       escalationReason = data.reason || 'High-risk';
     }
 
-    return NextResponse.json({
-      reply,
-      escalation,
-      escalationReason: escalationReason ?? null,
-      draftReply: draftReply ?? null,
-      source,
-      ticketId: data.ticketId,
-    });
+    return NextResponse.json(
+      {
+        reply,
+        escalation,
+        escalationReason: escalationReason ?? null,
+        draftReply: draftReply ?? null,
+        source,
+        ticketId: data.ticketId,
+      },
+      {
+        headers: {
+          'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+        },
+      },
+    );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Internal server error';
     console.error('[support API]', msg);

@@ -7,7 +7,7 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.push('/landing');
+    router.push('/support');
   }, [router]);
 
   return (

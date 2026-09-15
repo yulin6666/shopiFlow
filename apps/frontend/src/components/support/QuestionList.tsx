@@ -12,7 +12,7 @@ const QUESTION_CATEGORIES: QuestionCategory[] = [
   {
     title: 'Product Inquiries',
     questions: [
-      'List all NIKE products',
+      'List all ADIDAS products',
       'Do you have any ADIDAS backpacks?',
       'Is the NIKE TODDLER ROSHE ONE in stock?',
       'How much does the ADIDAS CLASSIC BACKPACK cost?',

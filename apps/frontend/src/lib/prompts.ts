@@ -1,4 +1,4 @@
-import { EscalationLevel, ReviewPlatform } from '@/types';
+import { EscalationLevel } from '@/types';
 
 // ---- Support: AI classification & escalation prompt ----
 
@@ -43,42 +43,6 @@ export const SUPPORT_ESCALATION_MESSAGES: Record<EscalationLevel, string> = {
   escalated: 'Escalated to human agent — AI will not respond',
 };
 
-// ---- Review Reply prompt ----
-
-export const buildReviewReplyPrompt = (
-  platform: ReviewPlatform,
-  rating: number,
-  reviewContent: string,
-  productName: string,
-  language: string,
-  targetLanguage?: string,
-): string => {
-  const lang = targetLanguage || language;
-  const tone = rating >= 4 ? 'warm and grateful' : rating === 3 ? 'understanding and helpful' : 'empathetic and solution-focused';
-
-  return `You are a brand manager for a premium supplement e-commerce brand. Write a professional, authentic reply to this customer review.
-
-Platform: ${platform}
-Product: ${productName}
-Rating: ${rating}/5
-Review language: ${language}
-Reply language: ${lang}
-Tone: ${tone}
-
-Review:
-"${reviewContent}"
-
-Guidelines:
-- Keep the reply under 80 words
-- Be genuine, not corporate-sounding
-- For low ratings (1-2): acknowledge the issue, apologize sincerely, offer to resolve
-- For medium ratings (3): thank them, address any concerns mentioned
-- For high ratings (4-5): express genuine gratitude, reinforce the brand promise
-- Never make medical claims
-- Reply in ${lang} language only
-- Do NOT include any JSON, just write the reply text directly`;
-};
-
 // ---- Workflow explanation prompts (for Automation tab) ----
 
 export const WORKFLOW_DESCRIPTIONS = {
@@ -102,17 +66,6 @@ export const WORKFLOW_DESCRIPTIONS = {
       { id: 's2', name: 'RAG Retrieval', description: 'Query Pinecone for relevant order data' },
       { id: 's3', name: 'AI Classification', description: 'Claude classifies: auto/draft/escalate' },
       { id: 's4', name: 'Format Response', description: 'Return JSON with reply and escalation' },
-    ],
-  },
-  reviewReply: {
-    name: 'Review Reply Generator',
-    description: 'Webhook: takes a review object, generates a brand-voice reply in the appropriate language via OpenRouter Claude.',
-    trigger: 'POST /webhook/review-reply',
-    steps: [
-      { id: 's1', name: 'Webhook Receive', description: 'Accept review data with language' },
-      { id: 's2', name: 'Build Prompt', description: 'Format review + brand guidelines prompt' },
-      { id: 's3', name: 'Claude Generate', description: 'OpenRouter → claude-sonnet-4-6' },
-      { id: 's4', name: 'Return Reply', description: 'Return reply text in requested language' },
     ],
   },
 };

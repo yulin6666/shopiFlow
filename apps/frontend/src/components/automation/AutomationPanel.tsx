@@ -25,15 +25,6 @@ const initialWorkflows: AutomationWorkflow[] = [
     status: 'idle',
     stats: { totalRuns: 1247, successRate: 97.8, avgDuration: '2.1s' },
   },
-  {
-    id: 'review-reply',
-    name: WORKFLOW_DESCRIPTIONS.reviewReply.name,
-    description: WORKFLOW_DESCRIPTIONS.reviewReply.description,
-    trigger: WORKFLOW_DESCRIPTIONS.reviewReply.trigger,
-    steps: WORKFLOW_DESCRIPTIONS.reviewReply.steps.map((s) => ({ ...s, status: 'idle' })),
-    status: 'idle',
-    stats: { totalRuns: 342, successRate: 98.5, avgDuration: '1.8s' },
-  },
 ];
 
 const statusColors: Record<WorkflowStatus, string> = {

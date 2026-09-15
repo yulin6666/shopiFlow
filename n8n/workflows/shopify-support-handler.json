@@ -14,7 +14,7 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        240,
+        100,
         300
       ],
       "webhookId": "shopify-support"
@@ -28,7 +28,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
+        300,
         300
       ]
     },
@@ -60,7 +60,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        660,
+        500,
         300
       ]
     },
@@ -74,7 +74,7 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        660,
+        500,
         480
       ]
     },
@@ -83,7 +83,7 @@
         "promptType": "define",
         "text": "={{ $json.forceError ? $json.nonExistentField.causeError : $json.chatInput }}",
         "options": {
-          "systemMessage": "You are a customer support AI for a Shopify store.\n\nIMPORTANT INSTRUCTIONS:\n1. ALWAYS use the Shopify Data tool to query the knowledge base before answering questions about products, orders, inventory, or pricing.\n2. After getting results from the tool, CAREFULLY FILTER the data based on what the customer asked:\n   - If asking about a specific brand/vendor (e.g., \"NIKE products\"), ONLY include records where metadata.vendor matches OR the product name contains that brand\n   - If asking about products, ONLY use records where metadata.type=\"product\"\n   - If asking about orders, ONLY use records where metadata.type=\"order\"\n   - IGNORE irrelevant results even if they appear in the tool output\n3. DO NOT make up prices, stock levels, or product details - only use information from the filtered results\n4. After filtering and answering, classify the message and respond in JSON format\n\nClassify into ONE of three categories:\n\n1. \"auto\" - Standard informational questions that can be answered directly:\n   - Order tracking / shipping status (\"Where is my order?\", \"What's the status of order #1180?\")\n   - Product inquiries / availability (\"List all NIKE products\", \"Do you have ADIDAS backpacks?\")\n   - Policy questions (\"What's your return policy?\", \"Do you offer free shipping?\")\n   - General store info\n\n2. \"draft\" - Requests that need human review before sending:\n   - ANY message containing: \"refund\", \"cancel order\", \"return order\", \"complaint\", \"disappointed\", \"not satisfied\"\n   - Discount/coupon requests (\"Do you have discount codes?\")\n   - Order modifications (\"Can I add items?\", \"Can I change my order?\")\n   - Return requests (\"I want to return\")\n\n3. \"escalate\" - High-risk messages requiring immediate human intervention:\n   - ANY message containing: \"sue\", \"lawyer\", \"legal\", \"chargeback\", \"dispute\", \"fraud\"\n   - Health/safety issues: \"allergic\", \"reaction\", \"sick\", \"injured\", \"unsafe\"\n   - Payment disputes: \"charged twice\", \"billed incorrectly\"\n   - Extreme emotions: \"terrible\", \"worst\", \"angry\", \"furious\", \"unacceptable\"\n   - Threats or demands for manager\n\nYou MUST respond in JSON format only:\n{\n  \"classification\": \"auto|draft|escalate\",\n  \"reason\": \"brief explanation\",\n  \"risk_level\": \"low|medium|high\",\n  \"reply\": \"draft reply text (for auto and draft only, null for escalate)\"\n}"
+          "systemMessage": "You are an intelligent customer support AI assistant.\n\n## CRITICAL TOOL USAGE RULE\nYou MUST call the available knowledge base tool for EVERY customer question, regardless of whether you think you know the answer. This is a strict requirement:\n- If the user asks about products, inventory, orders, services, or any factual information → ALWAYS call the tool first\n- Extract key search terms from the user's question (brand names, product types, order numbers, etc.)\n- Use the tool's retrieved results as the ONLY source of truth for your answer\n- If the tool returns no results, inform the user that the information is not available\n- NEVER provide answers based on your general knowledge or training data\n\n## Response Guidelines\n1. After retrieving data from the tool, answer the user's question clearly and accurately\n2. Only include information that appears in the retrieved results\n3. Classify the conversation risk level\n4. Return your response in strict JSON format\n\n## Classification Guidelines\n\n**\"auto\"** - Low-risk informational queries that can be safely auto-replied:\n- General information requests (policies, procedures, hours, locations)\n- Status checks (order status, appointment status, account info)\n- Product/service inquiries (availability, features, specifications)\n- How-to questions and troubleshooting guidance\n\n**\"draft\"** - Medium-risk requests requiring human review before sending:\n- Requests for changes, cancellations, or modifications\n- Complaints or expressions of dissatisfaction\n- Requests for refunds, returns, exchanges, or credits\n- Discount/promotion requests\n- Sensitive account operations\n\n**\"escalate\"** - High-risk issues requiring immediate human intervention:\n- Legal threats or mentions of lawyers, lawsuits, legal action\n- Financial disputes (unauthorized charges, billing errors, fraud claims)\n- Health/safety concerns (injuries, allergic reactions, safety hazards)\n- Severe emotional distress or threatening language\n- Demands to speak with management or executives\n- Regulatory compliance issues (privacy violations, accessibility)\n\n## Response Format (JSON only)\n{\n  \"classification\": \"auto|draft|escalate\",\n  \"reason\": \"brief explanation of classification decision\",\n  \"risk_level\": \"low|medium|high\",\n  \"reply\": \"helpful response text based ONLY on tool results (null for escalate)\"\n}"
         }
       },
       "id": "ai-agent",
@@ -106,8 +106,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        800,
-        520
+        760,
+        480
       ],
       "credentials": {
         "openAiApi": {
@@ -134,8 +134,8 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1,
       "position": [
-        1000,
-        520
+        900,
+        480
       ],
       "credentials": {
         "pineconeApi": {
@@ -154,8 +154,8 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1,
       "position": [
-        1000,
-        680
+        900,
+        660
       ],
       "credentials": {
         "openAiApi": {
@@ -166,14 +166,14 @@
     },
     {
       "parameters": {
-        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || '{}';\nlet parsed;\ntry {\n  const cleaned = agentOutput.replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(match ? match[0] : cleaned);\n} catch (parseError) {\n  parsed = { classification: 'escalate', reason: 'AI output parse error', risk_level: 'high', reply: null };\n}\n\nconst ticket = $('Parse Input').first().json;\nconst classification = parsed.classification || 'escalate';\n\nif (!['auto', 'draft', 'escalate'].includes(classification)) {\n  parsed.classification = 'escalate';\n  parsed.reason = 'Invalid classification: ' + classification;\n}\n\nlet status;\nif (classification === 'auto') status = 'auto_replied';\nelse if (classification === 'draft') status = 'needs_review';\nelse status = 'escalated';\n\nconst aiCallTimeMs = Date.now() - ticket.startTime;\n\nreturn [{\n  json: {\n    aiCallTimeMs,\n    status,\n    classification: parsed.classification,\n    reason: parsed.reason || '',\n    riskLevel: parsed.risk_level || 'high',\n    reply: parsed.reply || null,\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput\n  }\n}];"
+        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || '{}';\nlet parsed;\ntry {\n  // 先去掉 markdown code fence，再把未转义的实际换行符转义（reply 字段里常见）\n  const cleaned = agentOutput\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/```\\s*$/i, '')\n    .trim();\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  const jsonStr = match ? match[0] : cleaned;\n  // 把 JSON 字符串值中的实际换行符转义，避免 parse 失败\n  const safeStr = jsonStr.replace(/(\"(?:[^\"\\\\]|\\\\.)*\")|(\\n)/g, (m, quoted, newline) => {\n    if (quoted) return quoted; // 保留字符串内的已转义内容\n    return '\\\\n';             // 字符串外的裸换行忽略（通常不存在）\n  });\n  // 更稳健：先尝试直接 parse，失败再用 replace 清理后重试\n  try {\n    parsed = JSON.parse(jsonStr);\n  } catch {\n    // 把字符串值内的裸换行和 tab 转义\n    const fixed = jsonStr.replace(/\"((?:[^\"\\\\]|\\\\.)*)\"/g, (m, inner) => {\n      return '\"' + inner.replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r').replace(/\\t/g, '\\\\t') + '\"';\n    });\n    parsed = JSON.parse(fixed);\n  }\n} catch (parseError) {\n  // 最后尝试：用正则从原始输出中提取 classification 字段值\n  const classMatch = agentOutput.match(/\"classification\"\\s*:\\s*\"(auto|draft|escalate)\"/i);\n  const replyMatch = agentOutput.match(/\"reply\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"/);\n  const reasonMatch = agentOutput.match(/\"reason\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"/);\n  const riskMatch = agentOutput.match(/\"risk_level\"\\s*:\\s*\"(low|medium|high)\"/i);\n  if (classMatch) {\n    parsed = {\n      classification: classMatch[1],\n      reason: reasonMatch ? reasonMatch[1] : 'Extracted from malformed JSON',\n      risk_level: riskMatch ? riskMatch[1] : 'medium',\n      reply: replyMatch ? replyMatch[1] : null\n    };\n  } else {\n    parsed = { classification: 'escalate', reason: 'AI output parse error', risk_level: 'high', reply: null };\n  }\n}\n\nconst ticket = $('Parse Input').first().json;\nconst classification = parsed.classification || 'escalate';\n\nif (!['auto', 'draft', 'escalate'].includes(classification)) {\n  parsed.classification = 'escalate';\n  parsed.reason = 'Invalid classification: ' + classification;\n}\n\nlet status;\nif (classification === 'auto') status = 'auto_replied';\nelse if (classification === 'draft') status = 'needs_review';\nelse status = 'escalated';\n\nconst aiCallTimeMs = Date.now() - ticket.startTime;\n\nreturn [{\n  json: {\n    aiCallTimeMs,\n    status,\n    classification: parsed.classification,\n    reason: parsed.reason || '',\n    riskLevel: parsed.risk_level || 'high',\n    reply: parsed.reply || null,\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput\n  }\n}];"
       },
       "id": "merge-result",
       "name": "Parse Classification",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
+        1100,
         300
       ]
     },
@@ -186,8 +186,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1140,
-        500
+        1100,
+        480
       ]
     },
     {
@@ -201,7 +201,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1140,
+        1300,
         660
       ],
       "credentials": {
@@ -224,8 +224,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1620,
-        -100
+        1500,
+        200
       ],
       "credentials": {
         "postgres": {
@@ -247,8 +247,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1620,
-        100
+        1500,
+        300
       ],
       "credentials": {
         "postgres": {
@@ -270,8 +270,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1620,
-        300
+        1500,
+        400
       ],
       "credentials": {
         "postgres": {
@@ -363,7 +363,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [
-        1380,
+        1300,
         300
       ]
     },
@@ -378,8 +378,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1620,
-        100
+        1700,
+        200
       ]
     },
     {
@@ -393,7 +393,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1620,
+        1700,
         300
       ]
     },
@@ -408,8 +408,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1860,
-        500
+        1700,
+        400
       ]
     },
     {
@@ -422,8 +422,8 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        1620,
-        700
+        1700,
+        500
       ]
     }
   ],
