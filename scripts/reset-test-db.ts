@@ -16,7 +16,8 @@ const client = new Client({
   database: process.env.TEST_DB_NAME,
   user: process.env.TEST_DB_USER,
   password: process.env.TEST_DB_PASSWORD,
-  ssl: { rejectUnauthorized: false },
+  // Railway 需要 SSL，本地/CI Docker postgres 不需要
+  ssl: process.env.TEST_DB_HOST !== 'localhost' ? { rejectUnauthorized: false } : false,
 });
 
 async function resetDatabase() {
