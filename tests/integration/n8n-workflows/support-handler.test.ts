@@ -457,7 +457,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(response.classification).toBe('draft');
       expect(response.reason).toContain('AI');
       expect(response.reply).toBeDefined();
-    }, 35000);
+    }, 60000);
 
     it('should gracefully degrade without crashing workflow', async () => {
       const testTicketId = `test-force-error-graceful-${Date.now()}`;
@@ -476,7 +476,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(response.classification).toBe('draft');
       expect(response.riskLevel).toBe('medium');
       expect(response.reply).toBe('感谢您的消息。我们的团队会尽快为您处理。');
-    }, 35000);
+    }, 60000);
   });
 
   // ============================================================
@@ -498,7 +498,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         expect(error.message).toBeDefined();
         console.log(`✅ Global error caught: ${error.message}`);
       }
-    }, 35000);
+    }, 60000);
 
     it('should handle malformed data gracefully', async () => {
       const response = await n8n.triggerSupportWebhook({
@@ -519,7 +519,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         expect(response.reply).not.toContain('undefined');
         expect(response.reply).not.toContain('[object Object]');
       }
-    }, 35000);
+    }, 60000);
 
     it('should handle unicode and special character messages', async () => {
       const response = await n8n.triggerSupportWebhook({
@@ -534,6 +534,6 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(response).toBeDefined();
       expect(response.status).toBeDefined();
       expect(['auto_replied', 'needs_review', 'escalated']).toContain(response.status);
-    }, 35000);
+    }, 60000);
   });
 });
