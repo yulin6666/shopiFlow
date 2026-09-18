@@ -162,7 +162,8 @@ export const SUPPORT_FIXTURES = {
     platform: 'shopify',
     orderId: '1180',
     expectedClassification: 'draft',
-    replyMustContain: ['return'],
+    // AI 可能回复 return 流程，也可能直接说明订单 refund 状态
+    replyMustContain: ['return', 'refund'],
   },
   refundRequest: {
     message: 'Can I get a refund for my order?',

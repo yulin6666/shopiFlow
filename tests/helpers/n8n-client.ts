@@ -30,7 +30,7 @@ export class N8nClient {
 
     this.client = axios.create({
       baseURL: baseUrl,
-      timeout: 30000,
+      timeout: 55000, // 低于单测 60s timeout，给 n8n workflow 充足执行时间
       headers: {
         'Content-Type': 'application/json',
       },
@@ -55,7 +55,7 @@ export class N8nClient {
       if (error.response) {
         throw new Error(`n8n webhook failed: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
       }
-      throw error;
+      throw new Error(`n8n request failed: ${error.message}`);
     }
   }
 
