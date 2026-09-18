@@ -308,8 +308,6 @@ describe('n8n Workflow Integration - Support Handler', () => {
           assertReplyQuality(response, f, 'addItems');
         }
       }
-
-      
     }, 60000);
 
     it('should classify cancel order request as draft', async () => {
