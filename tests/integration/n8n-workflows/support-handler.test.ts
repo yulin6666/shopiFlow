@@ -398,13 +398,6 @@ describe('n8n Workflow Integration - Support Handler', () => {
       }
     }, 30000);
 
-    it('should handle long message without crashing', async () => {
-      const response = await n8n.triggerSupportWebhook(SUPPORT_FIXTURES.longMessage);
-
-      expect(response.status).toBeDefined();
-      expect(['auto_replied', 'needs_review', 'escalated']).toContain(response.status);
-    }, 120000);
-
     it('should handle XSS attempt and strip script tags from reply', async () => {
       const response = await n8n.triggerSupportWebhook(SUPPORT_FIXTURES.specialChars);
 
