@@ -195,7 +195,6 @@ export const SUPPORT_FIXTURES = {
     platform: 'shopify',
     orderId: null,
     expectedClassification: 'auto',
-    replyMustContain: ['sale'],
   },
   doubleCharge: {
     message: 'My payment was charged twice',

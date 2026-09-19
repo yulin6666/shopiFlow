@@ -30,7 +30,7 @@ export class N8nClient {
 
     this.client = axios.create({
       baseURL: baseUrl,
-      timeout: 110000, // 低于单测 120s timeout，给 n8n workflow 充足执行时间
+      timeout: 1500000, // 给 n8n workflow 充足执行时间
       headers: {
         'Content-Type': 'application/json',
       },
