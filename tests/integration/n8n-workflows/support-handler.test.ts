@@ -270,6 +270,8 @@ describe('n8n Workflow Integration - Support Handler', () => {
       const f = SUPPORT_FIXTURES.disputeCharge;
       const response = await n8n.triggerSupportWebhook(f);
 
+      
+
       console.log(`[disputeCharge] status: ${response.status}, reason: ${response.reason}`);
 
       expect(['escalated', 'needs_review']).toContain(response.status);
