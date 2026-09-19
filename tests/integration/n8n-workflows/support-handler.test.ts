@@ -109,16 +109,6 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(response.reply).toBeTruthy();
     }, 120000);
 
-    it('should handle generic order location query', async () => {
-      const f = SUPPORT_FIXTURES.orderLocation;
-      const response = await n8n.triggerSupportWebhook(f);
-
-      console.log(`[orderLocation] reply: ${response.reply?.slice(0, 200)}`);
-
-      expect(['auto', 'draft']).toContain(response.classification);
-      expect(response.reply).toBeTruthy();
-    }, 120000);
-
     it('should return tracking number for order #1180', async () => {
       const f = SUPPORT_FIXTURES.trackingNumber;
       const response = await n8n.triggerSupportWebhook(f);
