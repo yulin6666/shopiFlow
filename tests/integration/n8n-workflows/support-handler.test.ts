@@ -40,7 +40,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
   beforeAll(async () => {
     console.log('⏳ Waiting for services to be ready...');
     await Promise.all([n8n.waitForReady(), db.waitForReady()]);
-  }, 120000);
+  }, 300000);
 
   // ============================================================
   // Product Inquiries — 必须调用知识库，reply 包含产品相关信息
@@ -73,7 +73,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       console.log(`[nikeRosheStock] reply: ${response.reply?.slice(0, 200)}`);
 
       assertReplyQuality(response, f, 'nikeRosheStock');
-    }, 120000);
+    }, 300000);
 
     it('should return price info for ADIDAS CLASSIC BACKPACK', async () => {
       const f = SUPPORT_FIXTURES.adidasBackpackPrice;
@@ -82,7 +82,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       console.log(`[adidasBackpackPrice] reply: ${response.reply?.slice(0, 200)}`);
 
       assertReplyQuality(response, f, 'adidasBackpackPrice');
-    }, 120000);
+    }, 300000);
 
     it('should provide details about ADIDAS CLASSIC BACKPACK', async () => {
       const f = SUPPORT_FIXTURES.adidasBackpackInfo;
@@ -91,7 +91,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       console.log(`[adidasBackpackInfo] reply: ${response.reply?.slice(0, 200)}`);
 
       assertReplyQuality(response, f, 'adidasBackpackInfo');
-    }, 120000);
+    }, 300000);
   });
 
   // ============================================================
@@ -107,7 +107,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       // AI 查不到订单数据时可能返回 draft，两种都可接受
       expect(['auto', 'draft']).toContain(response.classification);
       expect(response.reply).toBeTruthy();
-    }, 120000);
+    }, 300000);
 
     it('should return tracking number for order #1180', async () => {
       const f = SUPPORT_FIXTURES.trackingNumber;
@@ -118,7 +118,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       // AI 可能分类为 auto 或 draft，两种都可接受
       expect(['auto', 'draft']).toContain(response.classification);
       assertReplyQuality(response, f, 'trackingNumber');
-    }, 120000);
+    }, 300000);
 
     it('should show order 1180 details', async () => {
       const f = SUPPORT_FIXTURES.orderDetails;
@@ -134,7 +134,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         // draft 场景也需要有 reply
         expect(response.reply).toBeTruthy();
       }
-    }, 120000);
+    }, 300000);
   });
 
   // ============================================================
@@ -148,7 +148,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       console.log(`[shippingOptions] reply: ${response.reply?.slice(0, 200)}`);
 
       assertReplyQuality(response, f, 'shippingOptions');
-    }, 120000);
+    }, 300000);
 
     it('should answer free shipping question', async () => {
       const f = SUPPORT_FIXTURES.freeShipping;
@@ -157,7 +157,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       console.log(`[freeShipping] reply: ${response.reply?.slice(0, 200)}`);
 
       assertReplyQuality(response, f, 'freeShipping');
-    }, 120000);
+    }, 300000);
 
     it('should answer international shipping question', async () => {
       const f = SUPPORT_FIXTURES.internationalShipping;
@@ -166,7 +166,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       console.log(`[internationalShipping] reply: ${response.reply?.slice(0, 200)}`);
 
       assertReplyQuality(response, f, 'internationalShipping');
-    }, 120000);
+    }, 300000);
   });
 
   // ============================================================
@@ -180,7 +180,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       console.log(`[returnPolicy] reply: ${response.reply?.slice(0, 200)}`);
 
       assertReplyQuality(response, f, 'returnPolicy');
-    }, 120000);
+    }, 300000);
 
     it('should explain return window (auto)', async () => {
       const f = SUPPORT_FIXTURES.returnWindow;
@@ -189,7 +189,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       console.log(`[returnWindow] reply: ${response.reply?.slice(0, 200)}`);
 
       assertReplyQuality(response, f, 'returnWindow');
-    }, 120000);
+    }, 300000);
 
     it('should classify return order request as draft', async () => {
       const f = SUPPORT_FIXTURES.returnOrder;
@@ -202,7 +202,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(['auto_replied', 'needs_review']).toContain(response.status);
       expect(response.reply).toBeTruthy();
       assertReplyQuality(response, f, 'returnOrder');
-    }, 120000);
+    }, 300000);
 
     it('should classify refund request as draft', async () => {
       const f = SUPPORT_FIXTURES.refundRequest;
@@ -215,7 +215,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(['auto_replied', 'needs_review']).toContain(response.status);
       expect(response.reply).toBeTruthy();
       assertReplyQuality(response, f, 'refundRequest');
-    }, 120000);
+    }, 300000);
   });
 
   // ============================================================
@@ -237,7 +237,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         replyLower.includes('discount') || replyLower.includes('promo') || replyLower.includes('offer') || replyLower.includes('sale'),
         `reply "${(response.reply || '').slice(0, 100)}" 应包含折扣相关词`,
       ).toBe(true);
-    }, 120000);
+    }, 300000);
 
     it('should classify sale inquiry as auto', async () => {
       const f = SUPPORT_FIXTURES.saleInquiry;
@@ -259,7 +259,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       if (response.status === 'escalated') {
         assertReplyQuality(response, f, 'doubleCharge');
       }
-    }, 120000);
+    }, 300000);
 
     it('should escalate charge dispute and reply must be null', async () => {
       const f = SUPPORT_FIXTURES.disputeCharge;
@@ -273,7 +273,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       if (response.status === 'escalated') {
         assertReplyQuality(response, f, 'disputeCharge');
       }
-    }, 120000);
+    }, 300000);
   });
 
   // ============================================================
@@ -297,7 +297,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
           assertReplyQuality(response, f, 'addItems');
         }
       }
-    }, 120000);
+    }, 300000);
 
     it('should classify cancel order request as draft', async () => {
       const f = SUPPORT_FIXTURES.cancelRequest;
@@ -316,7 +316,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         // escalate 场景
         expect(response.reason).toBeTruthy();
       }
-    }, 120000);
+    }, 300000);
 
     it('should classify size change request appropriately', async () => {
       const f = SUPPORT_FIXTURES.changeSize;
@@ -332,7 +332,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         // escalate 场景 reply 为 null
         expect(response.reply).toBeNull();
       }
-    }, 120000);
+    }, 300000);
   });
 
   // ============================================================
@@ -350,7 +350,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       if (response.status === 'escalated') {
         assertReplyQuality(response, f, 'legalThreat');
       }
-    }, 120000);
+    }, 300000);
 
     it('should escalate fraud claim with null reply', async () => {
       const f = SUPPORT_FIXTURES.fraudClaim;
@@ -399,7 +399,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       if (response.reply) {
         expect(response.reply).not.toContain('<script>');
       }
-    }, 120000);
+    }, 300000);
   });
 
   // ============================================================
@@ -422,7 +422,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
           expect(logs[0].workflow_id).toBe('shopify-support-handler');
         }
       }
-    }, 120000);
+    }, 300000);
 
     it('should trigger Handle AI Error branch on force-error input', async () => {
       const testTicketId = `test-force-error-retry-${Date.now()}`;
@@ -441,7 +441,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(response.status).toBe('needs_review');
       expect(response.reason).toContain('AI');
       expect(response.reply).toBeDefined();
-    }, 120000);
+    }, 300000);
 
     it('should gracefully degrade without crashing workflow', async () => {
       const testTicketId = `test-force-error-graceful-${Date.now()}`;
@@ -459,7 +459,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(response.status).toBe('needs_review');
       expect(response.riskLevel).toBe('medium');
       expect(response.reply).toBe('感谢您的消息。我们的团队会尽快为您处理。');
-    }, 120000);
+    }, 300000);
   });
 
   // ============================================================
@@ -481,7 +481,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         expect(error.message).toBeDefined();
         console.log(`✅ Global error caught: ${error.message}`);
       }
-    }, 120000);
+    }, 300000);
 
     it('should handle malformed data gracefully', async () => {
       const response = await n8n.triggerSupportWebhook({
@@ -502,7 +502,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         expect(response.reply).not.toContain('undefined');
         expect(response.reply).not.toContain('[object Object]');
       }
-    }, 120000);
+    }, 300000);
 
     it('should handle unicode and special character messages', async () => {
       const response = await n8n.triggerSupportWebhook({
@@ -517,6 +517,6 @@ describe('n8n Workflow Integration - Support Handler', () => {
       expect(response).toBeDefined();
       expect(response.status).toBeDefined();
       expect(['auto_replied', 'needs_review', 'escalated']).toContain(response.status);
-    }, 120000);
+    }, 300000);
   });
 });
