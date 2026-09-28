@@ -68,4 +68,15 @@ export const WORKFLOW_DESCRIPTIONS = {
       { id: 's4', name: 'Format Response', description: 'Return JSON with reply and escalation' },
     ],
   },
+  hubspotSync: {
+    name: 'HubSpot CRM Sync',
+    description: 'Async branch: after every support interaction, upserts the customer contact in HubSpot and writes the AI classification result as a Note on the contact timeline — so sales and ops see the full support history without leaving HubSpot.',
+    trigger: 'After each support ticket classification (async)',
+    steps: [
+      { id: 's1', name: 'Check Email', description: 'Skip if no customer email' },
+      { id: 's2', name: 'Upsert Contact', description: 'Find or create HubSpot contact by email' },
+      { id: 's3', name: 'Build Note', description: 'Format ticket ID / platform / AI classification' },
+      { id: 's4', name: 'Log to Timeline', description: 'POST note to HubSpot contact timeline' },
+    ],
+  },
 };

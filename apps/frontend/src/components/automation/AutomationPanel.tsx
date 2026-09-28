@@ -25,6 +25,15 @@ const initialWorkflows: AutomationWorkflow[] = [
     status: 'idle',
     stats: { totalRuns: 1247, successRate: 97.8, avgDuration: '2.1s' },
   },
+  {
+    id: 'hubspot-sync',
+    name: WORKFLOW_DESCRIPTIONS.hubspotSync.name,
+    description: WORKFLOW_DESCRIPTIONS.hubspotSync.description,
+    trigger: WORKFLOW_DESCRIPTIONS.hubspotSync.trigger,
+    steps: WORKFLOW_DESCRIPTIONS.hubspotSync.steps.map((s) => ({ ...s, status: 'idle' })),
+    status: 'idle',
+    stats: { totalRuns: 1189, successRate: 99.1, avgDuration: '1.4s' },
+  },
 ];
 
 const statusColors: Record<WorkflowStatus, string> = {

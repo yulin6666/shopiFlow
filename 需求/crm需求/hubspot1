@@ -1,0 +1,26 @@
+Summary
+We're looking for an experienced HubSpot and API integration developer to help us connect HubSpot (our CRM) with our ACH payment processor, EPPS, so client payment plans and payment status can be managed directly inside HubSpot instead of a separate system.
+
+We are early in this process and genuinely open on approach. We are not looking for the cheapest quote — we're looking for the best strategy. If you've solved a similar problem before, have a faster or more reliable approach, or would architect this differently than a straightforward point-to-point sync, we want to hear it. Your proposal should include your recommended approach, not just an hours estimate.
+
+The problem
+Right now, staff manage client payment plans in a separate system from HubSpot. This means moving between systems to set up payments, check status, and handle issues like failed or returned payments. We want HubSpot to become the primary place our team works from for this — building a payment schedule on the client record, activating it, and seeing accurate status without leaving HubSpot.
+
+What we know about the processor
+●	EPPS is our ACH payment processor. Its API is a SOAP/WSDL service, not REST — comfort with SOAP integrations is required.
+●	We can share the EPPS API documentation and WSDL directly with candidates we're seriously considering.
+●	We only process ACH/bank transfers. Credit card processing is not part of this project.
+What we're asking you to bring
+●	Your own read on the right architecture, after reviewing the EPPS documentation we provide — we want your independent thinking, not confirmation of an approach we've already decided on.
+●	Relevant past experience: have you built something like this before, for EPPS specifically or for a similar SOAP-based ACH/payment processor?
+●	Your honest assessment of the trickiest parts of this integration and how you'd handle them.
+●	A realistic phase breakdown and estimate based on your own approach, not a fixed scope we've handed you.
+
+Other relevant context
+●	We're open on the automation/integration layer (Zapier, n8n, direct API, middleware, etc.) — tell us what you'd recommend and why, as part of your proposed approach.
+●	We also use a secondary ACH processor, GoACH, which has a modern REST API. This is not part of the initial scope, but may factor into a later phase — mention if you have relevant experience.
+
+
+
+Process
+We're talking with a small number of developers to compare approaches before committing. If shortlisted, we'll share full technical documentation and get on a call to talk through your proposed approach in more depth.

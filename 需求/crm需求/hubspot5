@@ -1,0 +1,57 @@
+Summary
+About the Role
+
+Expedient Medicolegal Services is seeking an advanced HubSpot expert and hands-on AI implementer to work directly with our internal team.
+
+Our company has grown, and we need someone who can take ownership of our HubSpot environment, clean up and maintain our systems, improve workflows, and implement practical AI solutions that make the business more efficient.
+
+We need someone who can identify what needs to be done—not someone who waits for step-by-step instructions. You must be able to understand our operations, prioritize improvements, explain your recommendations, and personally build, test, and maintain the solutions.
+
+This is not an entry-level CRM administration role, a website-development assignment, or an advisory-only position.
+
+What You Will Own
+HubSpot cleanup and ongoing management. Audit our setup, address duplicate and inconsistent data, organize properties and pipelines, improve reporting, review permissions, and repair or simplify workflows. Protect important history and avoid disrupting active operations.
+Business workflows and efficiency. Improve processes supporting physician recruitment, onboarding, scheduling, follow-up, and internal coordination. Reduce manual work, missed tasks, duplicate effort, and gaps between departments.
+Practical AI implementation. Evaluate and implement appropriate HubSpot AI tools and other approved AI solutions. Identify useful applications, test accuracy, train employees, and demonstrate measurable benefits. Know when a straightforward workflow is more appropriate than AI.
+n8n development and integrations. Build, troubleshoot, and maintain workflows connecting HubSpot with our other systems through APIs, webhooks, JSON, and custom code. Include error handling, safe retries, duplicate prevention, and failure notifications.
+VPS and self-hosted n8n management. Manage n8n running on a virtual private server, including Linux/Docker administration, secure access, updates, monitoring, backups, and recovery.
+Long-term system ownership. Maintain a prioritized improvement plan, document your work, communicate progress and blockers, and support our team. Recommend improvements based on business value, reliability, and cost.
+Required Qualifications
+
+You must have advanced, hands-on HubSpot experience, demonstrated experience implementing AI in business operations, and direct experience building and maintaining self-hosted n8n on a VPS. Experience limited to basic HubSpot workflows or n8n Cloud is not sufficient.
+
+You should be comfortable with HubSpot APIs, authentication, webhooks, JSON, and JavaScript or another relevant programming language. You must be able to explain and troubleshoot the systems you build.
+
+Strong English communication, independent problem-solving, reliable follow-through, and clear documentation are essential. HubSpot certifications and healthcare-related experience are helpful, but demonstrated technical ability matters more than certificates or claims of expertise.
+
+You must be available for agreed working-hour overlap with our California team and have no conflicting full-time commitment.
+
+Compensation and Paid Trial
+
+Compensation: $20–$25 USD per hour, depending on demonstrated expertise.
+
+We will begin with a four-week paid trial at approximately 20 hours per week, with a maximum of 80 approved hours. The total trial labor budget is $1,600–$2,000, depending on the agreed hourly rate. Payment will be based on actual approved hours worked.
+
+During the trial, you will assess our existing environment, present a prioritized improvement plan, and deliver a small number of agreed, working improvements. These should demonstrate your HubSpot expertise, self-hosted n8n/VPS capability, and practical AI implementation skills.
+
+We will evaluate your technical ability, judgment, communication, testing, documentation, and ability to work independently. We will also assess the value of your improvements, including reduced manual work, fewer errors, and more reliable processes.
+
+The trial is intended to demonstrate your capabilities—not require a complete system overhaul in four weeks.
+
+Successful performance can lead to a long-term, full-time role at approximately 40 hours per week, at the same agreed hourly rate.
+
+Security and Ownership
+
+All work must remain in company-owned accounts and infrastructure. Documentation and credentials must be maintained through approved company systems.
+
+Use synthetic data for demonstrations and testing. Do not place confidential or patient information in personal accounts or unapproved AI tools. Production changes must follow an agreed approval, testing, backup, and recovery process.
+
+To Apply
+
+Please include:
+
+Relevant work you personally completed: A substantial HubSpot cleanup or implementation and an AI automation used in actual business operations. Explain your responsibilities and the results.
+Your self-hosted n8n/VPS experience: What you managed, a technical problem you resolved, and how you handle failures, updates, backups, and recovery.
+Your availability and requested rate: Your proposed hourly rate within the $20–$25 USD/hour range, current commitments, weekly availability, California working-hour overlap, and availability to transition to full-time.
+
+Shortlisted applicants should be prepared to walk through their own work and explain their technical decisions during an interview. Use demonstrations without confidential client or patient information.

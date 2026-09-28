@@ -50,7 +50,7 @@ const SupportChat = forwardRef<SupportChatRef>((props, ref) => {
       const response = await fetch('/api/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, source: 'shopify' }),
+        body: JSON.stringify({ message: text, source: 'shopify', customerEmail: '690884891@qq.com', customerName: 'Test User' }),
       });
 
       const data = await response.json();

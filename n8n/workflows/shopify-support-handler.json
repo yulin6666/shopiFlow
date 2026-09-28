@@ -425,6 +425,204 @@
         1700,
         500
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email-not-empty",
+              "leftValue": "={{ $json.customerEmail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-email-valid",
+      "name": "Check Email Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"filterGroups\": [{ \"filters\": [{ \"propertyName\": \"email\", \"operator\": \"EQ\", \"value\": $json.customerEmail }] }], \"properties\": [\"firstname\", \"lastname\", \"email\"], \"limit\": 1 } }}",
+        "options": {}
+      },
+      "id": "search-hubspot-contact",
+      "name": "Search HubSpot Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        800
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "hubspot-api",
+          "name": "HubSpot API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const searchResult = $input.first().json;\nconst ticket = $('Parse Classification').first().json || $('Handle AI Error').first().json;\n\nlet contactId = null;\n\n// 检查搜索结果\nif (searchResult.results && searchResult.results.length > 0) {\n  contactId = searchResult.results[0].id;\n} else {\n  // 需要创建新 contact\n  contactId = null;\n}\n\nreturn [{\n  json: {\n    contactId,\n    needsCreate: contactId === null,\n    customerEmail: ticket.customerEmail,\n    customerName: ticket.customerName,\n    platform: ticket.platform,\n    ticketId: ticket.ticketId,\n    classification: ticket.classification,\n    reason: ticket.reason,\n    riskLevel: ticket.riskLevel,\n    reply: ticket.reply\n  }\n}];"
+      },
+      "id": "check-contact-exists",
+      "name": "Check Contact Exists",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "needs-create",
+              "leftValue": "={{ $json.needsCreate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-create-or-update",
+      "name": "Route Create or Update",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"properties\": { \"email\": $json.customerEmail, \"firstname\": $json.customerName.split(' ')[0] || $json.customerName, \"lastname\": $json.customerName.split(' ').slice(1).join(' ') || '' } } }}",
+        "options": {}
+      },
+      "id": "create-hubspot-contact",
+      "name": "Create HubSpot Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2100,
+        700
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "hubspot-api",
+          "name": "HubSpot API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticket = $input.first().json;\nconst createResult = $input.first().json;\n\n// 从创建响应中提取 contactId\nconst contactId = createResult.id || ticket.contactId;\n\nreturn [{\n  json: {\n    hubspotContactId: contactId,\n    customerEmail: ticket.customerEmail,\n    customerName: ticket.customerName,\n    platform: ticket.platform,\n    ticketId: ticket.ticketId,\n    classification: ticket.classification,\n    reason: ticket.reason,\n    riskLevel: ticket.riskLevel,\n    reply: ticket.reply\n  }\n}];"
+      },
+      "id": "extract-contact-id-create",
+      "name": "Extract Contact ID (Create)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticket = $input.first().json;\n\n// 使用已有的 contactId\nreturn [{\n  json: {\n    hubspotContactId: ticket.contactId,\n    customerEmail: ticket.customerEmail,\n    customerName: ticket.customerName,\n    platform: ticket.platform,\n    ticketId: ticket.ticketId,\n    classification: ticket.classification,\n    reason: ticket.reason,\n    riskLevel: ticket.riskLevel,\n    reply: ticket.reply\n  }\n}];"
+      },
+      "id": "extract-contact-id-existing",
+      "name": "Extract Contact ID (Existing)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "merge-contact-paths",
+      "name": "Merge Contact Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2500,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/notes",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"properties\": { \"hs_note_body\": \"【AI客服记录】\\nTicket ID: \" + $json.ticketId + \"\\n平台: \" + $json.platform + \"\\n分类: \" + $json.classification + \"\\n风险等级: \" + $json.riskLevel + \"\\n原因: \" + $json.reason + \"\\nAI回复: \" + ($json.reply || '需人工处理') + \"\\n\\n--- 由 n8n 自动同步 ---\", \"hs_timestamp\": String(Date.now()) }, \"associations\": [{ \"to\": { \"id\": String($json.hubspotContactId) }, \"types\": [{ \"associationCategory\": \"HUBSPOT_DEFINED\", \"associationTypeId\": 10 }] }] } }}",
+        "options": {}
+      },
+      "id": "create-note-timeline",
+      "name": "Create Note on Timeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2700,
+        800
+      ],
+      "credentials": {
+        "hubspotApi": {
+          "id": "hubspot-api",
+          "name": "HubSpot API"
+        }
+      },
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -526,6 +724,11 @@
             "node": "Route by Classification",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Check Email Valid",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -540,6 +743,107 @@
           },
           {
             "node": "Route by Classification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Email Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Email Valid": {
+      "main": [
+        [
+          {
+            "node": "Search HubSpot Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Search HubSpot Contact": {
+      "main": [
+        [
+          {
+            "node": "Check Contact Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Contact Exists": {
+      "main": [
+        [
+          {
+            "node": "Route Create or Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Create or Update": {
+      "main": [
+        [
+          {
+            "node": "Create HubSpot Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Contact ID (Existing)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create HubSpot Contact": {
+      "main": [
+        [
+          {
+            "node": "Extract Contact ID (Create)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Contact ID (Create)": {
+      "main": [
+        [
+          {
+            "node": "Merge Contact Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Contact ID (Existing)": {
+      "main": [
+        [
+          {
+            "node": "Merge Contact Paths",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Contact Paths": {
+      "main": [
+        [
+          {
+            "node": "Create Note on Timeline",
             "type": "main",
             "index": 0
           }

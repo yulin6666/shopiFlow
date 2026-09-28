@@ -1,0 +1,59 @@
+Summary
+Bella Haire is a growing solo-founder e-commerce business selling standard and made-to-order hair products. I am looking for an experienced operations systems architect and automation builder who can first design the right process architecture and then implement a practical, maintainable system.
+
+This is not a request for a few isolated automations. I need one connected operating system and daily dashboard that reduces manual work, prevents information from getting lost, and clearly shows what needs attention.
+
+The system must support:
+
+• CRM, leads, follow-up and complete customer history
+• Consultations, fittings and appointments
+• Shopify orders and manually entered made-to-order orders
+• Deposits, outstanding balances and payment status
+• TO ORDER items and factory purchase orders
+• Supplier/Erica workflow, approvals and version/change control
+• A unique record and status history for every individual wig
+• Production, quality control, shipping and delivery
+• Inventory and stock availability
+• Klaviyo customer journeys and transactional communication
+• Aftercare, issues, returns and resolutions
+• Costs, landed cost, revenue and margin visibility
+• A daily dashboard showing exceptions, overdue actions and priorities
+
+Current and preferred tools include Shopify, HubSpot, Klaviyo, Calendly and Make or n8n. APIs or light custom development may be used where necessary, but I do not want an unnecessarily complex custom platform.
+
+PHASE 1 — DISCOVERY AND ARCHITECTURE
+
+• Map the complete current and future workflow
+• Identify the source of truth for every important record and status
+• Design the data model, lifecycle stages, ownership rules and exception handling
+• Recommend what should remain in Shopify, HubSpot and Klaviyo
+• Propose a phased implementation plan with priorities and estimated effort
+
+PHASE 2 — BUILD AND IMPLEMENTATION
+
+• Configure the agreed system
+• Build and test integrations and automations
+• Create the operational dashboard
+• Handle manual overrides, duplicate prevention, error alerts and retry logic
+• Document the system and provide a clear handover
+
+THE IDEAL FREELANCER
+
+• Has personally designed and built complete operational systems, not only individual automations
+• Understands e-commerce operations, orders, purchasing, inventory, production and customer lifecycle management
+• Has hands-on experience with Shopify, HubSpot, Klaviyo and Make or n8n
+• Can translate messy real-world processes into a simple, reliable system
+• Is willing to challenge unnecessary complexity
+• Can work independently with a solo founder and communicate clearly
+• Can show comparable work and explain what they personally designed and built
+
+PLEASE ANSWER IN YOUR PROPOSAL
+
+1. Describe the most comparable operational system you personally designed and built.
+2. Which system would you use as the source of truth for customers, orders, individual made-to-order items, supplier purchase orders and inventory, and why?
+3. How would you prevent duplicates, missed updates, and conflicts between manual changes and automations?
+4. What would you include in phase one, and what would you intentionally postpone?
+5. Share a relevant dashboard, workflow or case study and explain exactly what you built.
+6. Which parts would you solve with existing tools, and when would you recommend custom development?
+
+Please do not propose a large custom application before first understanding and mapping the business process.

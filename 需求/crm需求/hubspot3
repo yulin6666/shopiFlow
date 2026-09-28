@@ -1,0 +1,132 @@
+Summary
+
+We are looking for an experienced HubSpot Automation Developer who can demonstrate strong, hands
+on experience working directly inside HubSpot.
+This is not simply an n8n integration project. The right person should be comfortable building,
+
+troubleshooting, testing, and maintaining HubSpot native workflows, while also integrating HubSpot with
+n8n and external systems when appropriate
+
+A key requirement for this project is the ability to ensure that communications and automated activities are
+correctly associated with the appropriate HubSpot records.
+
+What We Need
+
+We currently use HubSpot together with n8n for CRM automation and communication workflows.
+Some emails and notifications triggered through n8n are not consistently visible within the corresponding
+HubSpot contact records. Our team needs to open a contact profile and see the relevant communication
+history without checking multiple systems.
+
+We need someone who can investigate this type of issue and determine whether the problem involves:
+
+• Email delivery or sending
+• HubSpot activity logging
+• Contact identification or matching
+• Incorrect record associations
+• API implementation
+• Workflow enrollment or execution
+• n8n workflow logic
+
+You should also be able to determine when an automation should be handled through a native HubSpot
+workflow and when n8n is the better solution.
+
+HubSpot Responsibilities
+
+You should have direct experience working inside HubSpot with:
+• Native HubSpot workflows and automation
+• Workflow enrollment criteria and re-enrollment
+• Contact and company properties
+• Deal pipelines and stages
+• Contact, company, deal, and activity associations
+
+
+
+
+
+
+• Email and communication activity
+• Lists and segmentation
+• Reporting and dashboards
+• Workflow troubleshooting and execution history
+• HubSpot APIs, webhooks, and authentication
+• Safe testing before production deployment
+
+You should understand how to modify existing HubSpot environments without accidentally disrupting
+active workflows or historical CRM data.
+
+n8n Integration
+
+You should also be comfortable building and troubleshooting integrations between HubSpot and n8n
+
+HubSpot triggers/webhooks → n8n → business logic/API calls → HubSpot updates
+Experience with JavaScript, JSON, REST APIs, webhooks, authentication, retries, error handling, and
+duplicate prevention is important.
+We want workflows designed so that retries or failures do not accidentally generate duplicate emails,
+activities, contacts, or CRM updates.
+
+AI Automation
+
+Experience implementing AI in real business workflows is strongly preferred.
+Examples could include:
+• Email classification
+• Lead qualification
+• CRM data extraction
+• Communication summarization
+• Automated follow-up preparation
+• Document processing
+• Internal workflow assistance
+
+You should be able to explain how you validate AI output before allowing it to affect CRM records or
+business processes.
+
+
+Please include a 5–8 minute Loom walkthrough with your application.
+The Loom video is an important part of our evaluation.
+Please make your work inside HubSpot the primary focus of the recording.
+Ideally, demonstrate:
+1.  A native HubSpot workflow you personally built
+
+ Show the workflow enrollment criteria, actions, branches or conditions, and explain the business problem it
+solves.
+
+2. HubSpot CRM structure
+
+Briefly demonstrate your experience with properties, pipelines, associations, lists, or reporting where
+relevant.
+3. Workflow testing
+
+Explain how you tested the automation without affecting production contacts, active workflows, or existing
+CRM history.
+4. HubSpot + n8n integration
+
+If possible, show a connected n8n workflow and explain how data moves between HubSpot and n8n.
+5. Communication logging
+
+Ideally demonstrate an email or automated communication generated through the workflow and show how
+the resulting activity is associated with and visible on the correct HubSpot contact record
+
+6. Technical decisions
+
+Briefly explain why you chose HubSpot native automation for certain steps and n8n for others.
+Please use an existing demo, sandbox, test portal, or authorized sanitized example. We are not asking
+applicants to build a new project for this application
+
+To Apply
+Along with your Loom recording, please briefly provide:
+HubSpot Experience:
+Describe your hands-on experience personally building and maintaining native HubSpot workflows.
+
+Troubleshooting Approach:
+If an email successfully sends through an n8n workflow but does not appear on the expected HubSpot
+contact record, what would you check first?
+
+n8n/VPS Experience:
+Briefly describe your experience operating self-hosted n8n and handling backups, restoration, workflow
+failures, retries, and duplicate prevention.
+
+Availability:
+Please provide your weekly availability and the hours you can overlap with California/Pacific Time.
+Also clarify whether you will personally perform all HubSpot, n8n, AI, and VPS work or whether anyone else
+would be involved.
+
+Please submit your 5–8 minute Loom video together with your application.
