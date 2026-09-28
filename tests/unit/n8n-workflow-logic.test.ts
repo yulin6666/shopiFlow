@@ -11,7 +11,7 @@ describe('n8n workflow logic - Parse Input', () => {
       message: 'Where is my order?',
       ticketId: 'test-001',
       customerName: 'John Doe',
-      customerEmail: 'john@example.com',
+      customerEmail: '690884891@qq.com',
       platform: 'shopify',
       orderId: '1234',
     };
@@ -20,7 +20,7 @@ describe('n8n workflow logic - Parse Input', () => {
 
     expect(result.ticketId).toBe('test-001');
     expect(result.customerName).toBe('John Doe');
-    expect(result.customerEmail).toBe('john@example.com');
+    expect(result.customerEmail).toBe('690884891@qq.com');
     expect(result.platform).toBe('shopify');
     expect(result.orderId).toBe('1234');
     expect(result.chatInput).toContain('Platform: shopify');
@@ -75,7 +75,7 @@ describe('n8n workflow logic - Parse Classification', () => {
   const mockTicket = {
     ticketId: 'test-001',
     customerName: 'John Doe',
-    customerEmail: 'john@example.com',
+    customerEmail: '690884891@qq.com',
     platform: 'shopify',
     chatInput: 'Platform: shopify\nMessage: Where is my order?\nOrder ID: None',
   };
@@ -179,7 +179,7 @@ describe('n8n workflow logic - Handle AI Error', () => {
   const mockTicket = {
     ticketId: 'test-error-001',
     customerName: 'Test User',
-    customerEmail: 'test@example.com',
+    customerEmail: '690884891@qq.com',
     platform: 'shopify',
     chatInput: 'Platform: shopify\nMessage: Test\nOrder ID: None',
   };

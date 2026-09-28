@@ -431,7 +431,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         message: 'This message will trigger force-error mode in Parse Input node',
         ticketId: testTicketId,
         customerName: 'Force Error Test',
-        customerEmail: 'force-error@example.com',
+        customerEmail: '690884891@qq.com',
         platform: 'shopify',
         orderId: null,
       });
@@ -450,7 +450,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         message: 'Testing graceful degradation',
         ticketId: testTicketId,
         customerName: 'Graceful Test',
-        customerEmail: 'graceful@example.com',
+        customerEmail: '690884891@qq.com',
         platform: 'shopify',
         orderId: null,
       });
@@ -472,7 +472,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
           message: '',
           ticketId: `test-global-empty-${Date.now()}`,
           customerName: 'Empty Message Test',
-          customerEmail: 'empty@example.com',
+          customerEmail: '690884891@qq.com',
           platform: 'shopify',
           orderId: null,
         });
@@ -488,7 +488,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         message: '{"invalid": "json structure as message"} <script>alert(1)</script> ' + '\n\r\t'.repeat(50),
         ticketId: `test-global-malformed-${Date.now()}`,
         customerName: 'Malformed\nData\tTest',
-        customerEmail: 'malformed@example.com',
+        customerEmail: '690884891@qq.com',
         platform: 'shopify',
         orderId: null,
       });
@@ -509,7 +509,7 @@ describe('n8n Workflow Integration - Support Handler', () => {
         message: 'Test parsing with edge case: ' + '特殊字符测试 ñ ü ö 中文测试 '.repeat(10),
         ticketId: `test-parse-error-${Date.now()}`,
         customerName: 'Parse Error Test',
-        customerEmail: 'parse@example.com',
+        customerEmail: '690884891@qq.com',
         platform: 'shopify',
         orderId: null,
       });

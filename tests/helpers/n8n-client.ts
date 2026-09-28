@@ -105,7 +105,7 @@ export class N8nClient {
       message: payload.message,
       ticketId: payload.ticketId || `test-${Date.now()}`,
       customerName: payload.customerName || 'Test User',
-      customerEmail: payload.customerEmail || 'test@example.com',
+      customerEmail: payload.customerEmail || '690884891@qq.com',
       platform: payload.platform || 'shopify',
       orderId: payload.orderId || null,
     });
