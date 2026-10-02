@@ -79,4 +79,35 @@ export const WORKFLOW_DESCRIPTIONS = {
       { id: 's4', name: 'Log to Timeline', description: 'POST note to HubSpot contact timeline' },
     ],
   },
+  gohighlevelSync: {
+    name: 'GoHighLevel CRM Sync',
+    description: 'Async branch: after every support interaction, upserts the customer contact in GoHighLevel and creates a note recording the AI classification result — keeping the CRM updated without manual entry.',
+    trigger: 'After each support ticket classification (async)',
+    steps: [
+      { id: 's1', name: 'Check Email', description: 'Skip if no customer email' },
+      { id: 's2', name: 'Search Contact', description: 'Look up existing GHL contact by email' },
+      { id: 's3', name: 'Create or Reuse', description: 'Create new contact or use existing contact ID' },
+      { id: 's4', name: 'Create Note', description: 'POST ticket summary note to GHL contact' },
+    ],
+  },
+  slackNotification: {
+    name: 'Slack 工单告警',
+    description: 'Async branch: when a support ticket is escalated to a human agent, immediately posts an alert to the configured Slack channel with ticket details and the original customer message.',
+    trigger: 'When classification = escalate (async)',
+    steps: [
+      { id: 's1', name: 'Receive Ticket', description: 'Parse ticket metadata from main workflow' },
+      { id: 's2', name: 'Check Escalation', description: 'Only proceed if classification is escalate' },
+      { id: 's3', name: 'Format Message', description: 'Build Slack Block Kit alert with ticket details' },
+      { id: 's4', name: 'Post to Channel', description: 'Send alert to #support-escalations channel' },
+    ],
+  },
+  airtableLog: {
+    name: 'Airtable 工单记录',
+    description: 'Async branch: after every support interaction, appends a full record to the Airtable "Support Tickets" table — giving non-technical team members a searchable, filterable view of all AI-handled tickets.',
+    trigger: 'After each support ticket classification (async)',
+    steps: [
+      { id: 's1', name: 'Parse Ticket Data', description: 'Extract all ticket fields from main workflow' },
+      { id: 's2', name: 'Create Record', description: 'Append row to Airtable with all ticket fields' },
+    ],
+  },
 };
