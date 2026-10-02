@@ -34,6 +34,33 @@ const initialWorkflows: AutomationWorkflow[] = [
     status: 'idle',
     stats: { totalRuns: 1189, successRate: 99.1, avgDuration: '1.4s' },
   },
+  {
+    id: 'gohighlevel-sync',
+    name: WORKFLOW_DESCRIPTIONS.gohighlevelSync.name,
+    description: WORKFLOW_DESCRIPTIONS.gohighlevelSync.description,
+    trigger: WORKFLOW_DESCRIPTIONS.gohighlevelSync.trigger,
+    steps: WORKFLOW_DESCRIPTIONS.gohighlevelSync.steps.map((s) => ({ ...s, status: 'idle' })),
+    status: 'idle',
+    stats: { totalRuns: 983, successRate: 98.7, avgDuration: '1.6s' },
+  },
+  {
+    id: 'slack-notification',
+    name: WORKFLOW_DESCRIPTIONS.slackNotification.name,
+    description: WORKFLOW_DESCRIPTIONS.slackNotification.description,
+    trigger: WORKFLOW_DESCRIPTIONS.slackNotification.trigger,
+    steps: WORKFLOW_DESCRIPTIONS.slackNotification.steps.map((s) => ({ ...s, status: 'idle' })),
+    status: 'idle',
+    stats: { totalRuns: 87, successRate: 100.0, avgDuration: '0.8s' },
+  },
+  {
+    id: 'airtable-log',
+    name: WORKFLOW_DESCRIPTIONS.airtableLog.name,
+    description: WORKFLOW_DESCRIPTIONS.airtableLog.description,
+    trigger: WORKFLOW_DESCRIPTIONS.airtableLog.trigger,
+    steps: WORKFLOW_DESCRIPTIONS.airtableLog.steps.map((s) => ({ ...s, status: 'idle' })),
+    status: 'idle',
+    stats: { totalRuns: 1247, successRate: 99.8, avgDuration: '0.6s' },
+  },
 ];
 
 const statusColors: Record<WorkflowStatus, string> = {

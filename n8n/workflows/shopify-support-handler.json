@@ -75,7 +75,7 @@
       "typeVersion": 1,
       "position": [
         500,
-        480
+        520
       ]
     },
     {
@@ -91,7 +91,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
       "position": [
-        900,
+        800,
         300
       ],
       "onError": "continueErrorOutput"
@@ -107,7 +107,7 @@
       "typeVersion": 1,
       "position": [
         760,
-        480
+        520
       ],
       "credentials": {
         "openAiApi": {
@@ -135,7 +135,7 @@
       "typeVersion": 1,
       "position": [
         900,
-        480
+        520
       ],
       "credentials": {
         "pineconeApi": {
@@ -155,7 +155,7 @@
       "typeVersion": 1,
       "position": [
         900,
-        660
+        700
       ],
       "credentials": {
         "openAiApi": {
@@ -187,7 +187,7 @@
       "typeVersion": 2,
       "position": [
         1100,
-        480
+        520
       ]
     },
     {
@@ -202,7 +202,7 @@
       "typeVersion": 2.4,
       "position": [
         1300,
-        660
+        520
       ],
       "credentials": {
         "postgres": {
@@ -225,7 +225,7 @@
       "typeVersion": 2.4,
       "position": [
         1500,
-        200
+        120
       ],
       "credentials": {
         "postgres": {
@@ -271,7 +271,7 @@
       "typeVersion": 2.4,
       "position": [
         1500,
-        400
+        480
       ],
       "credentials": {
         "postgres": {
@@ -379,7 +379,7 @@
       "typeVersion": 1.1,
       "position": [
         1700,
-        200
+        120
       ]
     },
     {
@@ -409,7 +409,7 @@
       "typeVersion": 1.1,
       "position": [
         1700,
-        400
+        480
       ]
     },
     {
@@ -422,8 +422,8 @@
       "type": "n8n-nodes-base.stopAndError",
       "typeVersion": 1,
       "position": [
-        1700,
-        500
+        1500,
+        660
       ]
     },
     {
@@ -443,6 +443,15 @@
                 "type": "string",
                 "operation": "notEmpty"
               }
+            },
+            {
+              "id": "hubspot-enabled",
+              "leftValue": "={{ true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
             }
           ],
           "combinator": "and"
@@ -455,7 +464,7 @@
       "typeVersion": 2,
       "position": [
         1300,
-        800
+        900
       ]
     },
     {
@@ -475,7 +484,7 @@
       "typeVersion": 4.2,
       "position": [
         1500,
-        800
+        900
       ],
       "credentials": {
         "hubspotApi": {
@@ -495,7 +504,7 @@
       "typeVersion": 2,
       "position": [
         1700,
-        800
+        900
       ]
     },
     {
@@ -527,7 +536,7 @@
       "typeVersion": 2,
       "position": [
         1900,
-        800
+        900
       ]
     },
     {
@@ -547,7 +556,7 @@
       "typeVersion": 4.2,
       "position": [
         2100,
-        700
+        800
       ],
       "credentials": {
         "hubspotApi": {
@@ -567,7 +576,7 @@
       "typeVersion": 2,
       "position": [
         2300,
-        700
+        800
       ]
     },
     {
@@ -580,7 +589,7 @@
       "typeVersion": 2,
       "position": [
         2300,
-        900
+        1000
       ]
     },
     {
@@ -594,7 +603,7 @@
       "typeVersion": 3,
       "position": [
         2500,
-        800
+        900
       ]
     },
     {
@@ -614,12 +623,420 @@
       "typeVersion": 4.2,
       "position": [
         2700,
-        800
+        900
       ],
       "credentials": {
         "hubspotApi": {
           "id": "hubspot-api",
           "name": "HubSpot API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-email",
+              "leftValue": "={{ $json.customerEmail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "ghl-enabled",
+              "leftValue": "={{ true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ghl-check-email",
+      "name": "GHL: Check Email Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://services.leadconnectorhq.com/contacts/?query={{ encodeURIComponent($json.customerEmail) }}&locationId=AgQhMSAKARrl6k3ay4nP",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ghl-search-contact",
+      "name": "GHL: Search Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        1300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "gohighlevel-api",
+          "name": "GoHighLevel API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const searchResult = $input.first().json;\nconst ticket = $('Parse Classification').first().json || $('Handle AI Error').first().json;\nconst contacts = searchResult.contacts || [];\nconst exists = contacts.length > 0;\nreturn [{\n  json: {\n    ...ticket,\n    contactExists: exists,\n    contactId: exists ? contacts[0].id : null\n  }\n}];"
+      },
+      "id": "ghl-check-exists",
+      "name": "GHL: Check Contact Exists",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.contactExists }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.contactExists }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "existing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ghl-route-create-update",
+      "name": "GHL: Route Create or Existing",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        1900,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"locationId\": \"AgQhMSAKARrl6k3ay4nP\", \"email\": $json.customerEmail, \"firstName\": ($json.customerName || 'Customer').split(' ')[0], \"lastName\": ($json.customerName || '').split(' ').slice(1).join(' ') || '', \"source\": $json.platform + \" via ShopiFow\" } }}",
+        "options": {}
+      },
+      "id": "ghl-create-contact",
+      "name": "GHL: Create Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2100,
+        1200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "gohighlevel-api",
+          "name": "GoHighLevel API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const created = $input.first().json;\nconst prev = $input.first().json;\nreturn [{\n  json: {\n    ...prev,\n    resolvedContactId: created.contact?.id || created.id || 'unknown'\n  }\n}];"
+      },
+      "id": "ghl-extract-id-create",
+      "name": "GHL: Extract ID (Create)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\nreturn [{\n  json: {\n    ...prev,\n    resolvedContactId: prev.contactId || 'unknown'\n  }\n}];"
+      },
+      "id": "ghl-extract-id-existing",
+      "name": "GHL: Extract ID (Existing)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        1400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "ghl-merge-paths",
+      "name": "GHL: Merge Contact Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2500,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $json.resolvedContactId }}/notes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"body\": \"【AI客服记录】\\nTicket ID: \" + $json.ticketId + \"\\n平台: \" + $json.platform + \"\\n分类: \" + $json.classification + \"\\n风险等级: \" + $json.riskLevel + \"\\n原因: \" + $json.reason + \"\\nAI回复: \" + ($json.reply || '需人工处理') + \"\\n\\n--- 由 n8n 自动同步 ---\" } }}",
+        "options": {}
+      },
+      "id": "ghl-create-note",
+      "name": "GHL: Create Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2700,
+        1300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "gohighlevel-api",
+          "name": "GoHighLevel API"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-escalated",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "escalate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "slack-enabled",
+              "leftValue": "={{ true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "slack-check-escalated",
+      "name": "Is Escalated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        1700
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "={{ $vars.SLACK_CHANNEL_ID || '#support-escalations' }}",
+        "text": "=:rotating_light: *工单升级通知*\n\n*Ticket ID:* `{{ $json.ticketId }}`\n*平台:* {{ $json.platform }}\n*客户:* {{ $json.customerName }} ({{ $json.customerEmail }})\n*风险等级:* {{ $json.riskLevel === 'high' ? ':red_circle: 高' : ':large_yellow_circle: 中' }}\n*升级原因:* {{ $json.reason }}\n\n*客户原始消息:*\n> {{ $json.originalMessage }}\n\n_请尽快跟进处理_",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "slack-post-message",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1500,
+        1700
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "slack-oauth2",
+          "name": "Slack OAuth2"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "airtable-enabled",
+              "leftValue": "={{ true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-airtable-enabled",
+      "name": "Check Airtable Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        2100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    'Ticket ID': String($json.ticketId),\n    'Customer Email': $json.customerEmail,\n    'Customer Name': $json.customerName,\n    'Platform': $json.platform,\n    'Classification': $json.classification,\n    'Status': $json.status,\n    'Risk Level': $json.riskLevel,\n    'Escalation Reason': $json.reason || '',\n    'AI Reply': $json.reply || '',\n    'Original Message': $json.originalMessage || '',\n    'Timestamp': new Date().toISOString()\n  }\n}];"
+      },
+      "id": "transform-for-airtable",
+      "name": "Transform for Airtable",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1450,
+        2100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appRqdKKh4F1Vq4ao",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "Support Tickets",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "airtable-create-record",
+      "name": "Create Airtable Record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        1500,
+        2100
+      ],
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "airtable-api",
+          "name": "Airtable API"
         }
       },
       "continueOnFail": true
@@ -675,7 +1092,8 @@
             "index": 0
           }
         ]
-      ]
+      ],
+      "main": []
     },
     "Shopify Data (Pinecone)": {
       "ai_tool": [
@@ -686,7 +1104,8 @@
             "index": 0
           }
         ]
-      ]
+      ],
+      "main": []
     },
     "Embeddings OpenAI": {
       "ai_embedding": [
@@ -697,7 +1116,8 @@
             "index": 0
           }
         ]
-      ]
+      ],
+      "main": []
     },
     "Shopify AI Agent": {
       "main": [
@@ -726,6 +1146,21 @@
             "index": 0
           },
           {
+            "node": "GHL: Check Email Valid",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Escalated?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Airtable Enabled",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Check Email Valid",
             "type": "main",
             "index": 0
@@ -747,7 +1182,92 @@
             "index": 0
           },
           {
+            "node": "GHL: Check Email Valid",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Escalated?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Airtable Enabled",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Check Email Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log AI Degradation": {
+      "main": [
+        []
+      ]
+    },
+    "Route by Classification": {
+      "main": [
+        [
+          {
+            "node": "Log Auto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Escalate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop on Invalid Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Auto": {
+      "main": [
+        [
+          {
+            "node": "Respond (Auto)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Draft": {
+      "main": [
+        [
+          {
+            "node": "Respond (Draft)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Escalate": {
+      "main": [
+        [
+          {
+            "node": "Respond (Escalate)",
             "type": "main",
             "index": 0
           }
@@ -850,74 +1370,155 @@
         ]
       ]
     },
-    "Log AI Degradation": {
+    "Create Note on Timeline": {
       "main": [
         []
       ]
     },
-    "Route by Classification": {
+    "GHL: Check Email Valid": {
       "main": [
         [
           {
-            "node": "Log Auto",
+            "node": "GHL: Search Contact",
             "type": "main",
             "index": 0
           }
         ],
+        []
+      ]
+    },
+    "GHL: Search Contact": {
+      "main": [
         [
           {
-            "node": "Log Draft",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Log Escalate",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Stop on Invalid Route",
+            "node": "GHL: Check Contact Exists",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Log Auto": {
+    "GHL: Check Contact Exists": {
       "main": [
         [
           {
-            "node": "Respond (Auto)",
+            "node": "GHL: Route Create or Existing",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Log Draft": {
+    "GHL: Route Create or Existing": {
       "main": [
         [
           {
-            "node": "Respond (Draft)",
+            "node": "GHL: Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GHL: Extract ID (Existing)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Log Escalate": {
+    "GHL: Create Contact": {
       "main": [
         [
           {
-            "node": "Respond (Escalate)",
+            "node": "GHL: Extract ID (Create)",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "GHL: Extract ID (Create)": {
+      "main": [
+        [
+          {
+            "node": "GHL: Merge Contact Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Extract ID (Existing)": {
+      "main": [
+        [
+          {
+            "node": "GHL: Merge Contact Paths",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "GHL: Merge Contact Paths": {
+      "main": [
+        [
+          {
+            "node": "GHL: Create Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Create Note": {
+      "main": [
+        []
+      ]
+    },
+    "Is Escalated?": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Post to Slack": {
+      "main": [
+        []
+      ]
+    },
+    "Check Airtable Enabled": {
+      "main": [
+        [
+          {
+            "node": "Transform for Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Transform for Airtable": {
+      "main": [
+        [
+          {
+            "node": "Create Airtable Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Airtable Record": {
+      "main": [
+        []
       ]
     }
   },
@@ -930,5 +1531,5 @@
   "tags": [],
   "triggerCount": 0,
   "updatedAt": "2026-08-13T00:00:00.000Z",
-  "versionId": "shopiflow-shopify-support-v4"
+  "versionId": "shopiflow-support-all-in-one-v2"
 }
