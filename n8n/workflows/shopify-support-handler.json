@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || '';\nconst ticketId = body.ticketId || Date.now();\nconst customerName = body.customerName || 'Customer';\nconst customerEmail = body.customerEmail || '';\nconst platform = body.platform || 'shopify';\nconst orderId = body.orderId || null;\n\n// Input validation\nif (!message || message.trim().length === 0) {\n  throw new Error(`Invalid input: message is required. Received ticketId=${ticketId}`);\n}\n\n// Force-error mode for testing: pass through to trigger downstream AI Agent failure\nconst forceError = String(ticketId).startsWith('test-force-error-');\n\nconst startTime = Date.now();\n\nreturn [{\n  json: {\n    startTime,\n    ticketId,\n    customerName,\n    customerEmail,\n    platform,\n    orderId,\n    chatInput: 'Platform: ' + platform + '\\nMessage: ' + message + '\\nOrder ID: ' + (orderId || 'None'),\n    forceError\n  }\n}];"
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  // 兼容两种来源：\n  // 1. Shopify Webhook: data.body = { message, customerName, ... }\n  // 2. Gmail (Extract Email Data): data.body = { message, ... }, data.gmail_thread_id\n  const body = data.body || data;\n  const message = body.message || '';\n  const ticketId = body.ticketId || data.ticketId || Date.now();\n  const customerName = body.customerName || data.customerName || 'Customer';\n  const customerEmail = body.customerEmail || data.customerEmail || '';\n  const platform = body.platform || data.platform || 'shopify';\n  const orderId = (body.orderId !== undefined ? body.orderId : data.orderId) || null;\n  const gmail_thread_id = data.gmail_thread_id || null;\n  const gmail_message_id = data.gmail_message_id || null;\n\n  if (!message || message.trim().length === 0) {\n    continue;\n  }\n\n  const startTime = Date.now();\n  const forceError = String(ticketId).startsWith('test-force-error-');\n\n  results.push({\n    json: {\n      startTime,\n      ticketId,\n      customerName,\n      customerEmail,\n      platform,\n      orderId,\n      gmail_thread_id,\n      gmail_message_id,\n      chatInput: 'Platform: ' + platform + '\\nMessage: ' + message + '\\nOrder ID: ' + (orderId || 'None'),\n      forceError\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "parse-input",
       "name": "Parse Input",
@@ -166,7 +166,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || '{}';\nlet parsed;\ntry {\n  // 先去掉 markdown code fence，再把未转义的实际换行符转义（reply 字段里常见）\n  const cleaned = agentOutput\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/```\\s*$/i, '')\n    .trim();\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  const jsonStr = match ? match[0] : cleaned;\n  // 把 JSON 字符串值中的实际换行符转义，避免 parse 失败\n  const safeStr = jsonStr.replace(/(\"(?:[^\"\\\\]|\\\\.)*\")|(\\n)/g, (m, quoted, newline) => {\n    if (quoted) return quoted; // 保留字符串内的已转义内容\n    return '\\\\n';             // 字符串外的裸换行忽略（通常不存在）\n  });\n  // 更稳健：先尝试直接 parse，失败再用 replace 清理后重试\n  try {\n    parsed = JSON.parse(jsonStr);\n  } catch {\n    // 把字符串值内的裸换行和 tab 转义\n    const fixed = jsonStr.replace(/\"((?:[^\"\\\\]|\\\\.)*)\"/g, (m, inner) => {\n      return '\"' + inner.replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r').replace(/\\t/g, '\\\\t') + '\"';\n    });\n    parsed = JSON.parse(fixed);\n  }\n} catch (parseError) {\n  // 最后尝试：用正则从原始输出中提取 classification 字段值\n  const classMatch = agentOutput.match(/\"classification\"\\s*:\\s*\"(auto|draft|escalate)\"/i);\n  const replyMatch = agentOutput.match(/\"reply\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"/);\n  const reasonMatch = agentOutput.match(/\"reason\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"/);\n  const riskMatch = agentOutput.match(/\"risk_level\"\\s*:\\s*\"(low|medium|high)\"/i);\n  if (classMatch) {\n    parsed = {\n      classification: classMatch[1],\n      reason: reasonMatch ? reasonMatch[1] : 'Extracted from malformed JSON',\n      risk_level: riskMatch ? riskMatch[1] : 'medium',\n      reply: replyMatch ? replyMatch[1] : null\n    };\n  } else {\n    parsed = { classification: 'escalate', reason: 'AI output parse error', risk_level: 'high', reply: null };\n  }\n}\n\nconst ticket = $('Parse Input').first().json;\nconst classification = parsed.classification || 'escalate';\n\nif (!['auto', 'draft', 'escalate'].includes(classification)) {\n  parsed.classification = 'escalate';\n  parsed.reason = 'Invalid classification: ' + classification;\n}\n\nlet status;\nif (classification === 'auto') status = 'auto_replied';\nelse if (classification === 'draft') status = 'needs_review';\nelse status = 'escalated';\n\nconst aiCallTimeMs = Date.now() - ticket.startTime;\n\nreturn [{\n  json: {\n    aiCallTimeMs,\n    status,\n    classification: parsed.classification,\n    reason: parsed.reason || '',\n    riskLevel: parsed.risk_level || 'high',\n    reply: parsed.reply || null,\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput\n  }\n}];"
+        "jsCode": "const results = [];\nconst allInputs = $input.all();\nconst allTickets = $('Parse Input').all();\n\nfor (let i = 0; i < allInputs.length; i++) {\n  const agentOutput = allInputs[i].json.output || allInputs[i].json.text || '{}';\n  const ticket = (allTickets[i] || allTickets[0]).json;\n\n  let parsed;\n  try {\n    const cleaned = agentOutput\n      .replace(/^```json\\s*/i, '')\n      .replace(/^```\\s*/i, '')\n      .replace(/```\\s*$/i, '')\n      .trim();\n    const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n    const jsonStr = match ? match[0] : cleaned;\n    try {\n      parsed = JSON.parse(jsonStr);\n    } catch {\n      const fixed = jsonStr.replace(/\"((?:[^\"\\\\]|\\\\.)*)\"/g, (m, inner) => {\n        return '\"' + inner.replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r').replace(/\\t/g, '\\\\t') + '\"';\n      });\n      parsed = JSON.parse(fixed);\n    }\n  } catch (parseError) {\n    const classMatch = agentOutput.match(/\"classification\"\\s*:\\s*\"(auto|draft|escalate)\"/i);\n    const replyMatch = agentOutput.match(/\"reply\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"/);\n    const reasonMatch = agentOutput.match(/\"reason\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"/);\n    const riskMatch = agentOutput.match(/\"risk_level\"\\s*:\\s*\"(low|medium|high)\"/i);\n    if (classMatch) {\n      parsed = {\n        classification: classMatch[1],\n        reason: reasonMatch ? reasonMatch[1] : 'Extracted from malformed JSON',\n        risk_level: riskMatch ? riskMatch[1] : 'medium',\n        reply: replyMatch ? replyMatch[1] : null\n      };\n    } else {\n      parsed = { classification: 'escalate', reason: 'AI output parse error', risk_level: 'high', reply: null };\n    }\n  }\n\n  const classification = ['auto', 'draft', 'escalate'].includes(parsed.classification)\n    ? parsed.classification\n    : 'escalate';\n  if (classification === 'escalate' && parsed.classification !== 'escalate') {\n    parsed.reason = 'Invalid classification: ' + parsed.classification;\n  }\n\n  let status;\n  if (classification === 'auto') status = 'auto_replied';\n  else if (classification === 'draft') status = 'needs_review';\n  else status = 'escalated';\n\n  const aiCallTimeMs = Date.now() - ticket.startTime;\n\n  results.push({\n    json: {\n      aiCallTimeMs,\n      status,\n      classification,\n      reason: parsed.reason || '',\n      riskLevel: parsed.risk_level || 'high',\n      reply: parsed.reply || null,\n      ticketId: ticket.ticketId,\n      customerName: ticket.customerName,\n      customerEmail: ticket.customerEmail,\n      platform: ticket.platform,\n      originalMessage: ticket.chatInput,\n      gmail_thread_id: ticket.gmail_thread_id || null,\n      gmail_message_id: ticket.gmail_message_id || null\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "merge-result",
       "name": "Parse Classification",
@@ -179,7 +179,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ticket = $('Parse Input').first().json;\nconst error = $input.first().json.error || {};\n\n// 降级兜底逻辑：AI 失败时标记为 draft（需人工审核）而非 escalate\n// 这是更安全的选择，避免误判为高风险\nconst aiCallTimeMs = Date.now() - ticket.startTime;\n\n// Capture n8n execution context\nconst executionId = $execution.id;\nconst workflowId = $workflow.id;\nconst workflowName = $workflow.name;\nconst failedNode = error.node?.name || 'AI Agent';\n\nreturn [{\n  json: {\n    aiCallTimeMs,\n    status: 'needs_review',\n    classification: 'draft',\n    reason: 'AI 分类服务暂时不可用，已标记为待审核: ' + (error.message || 'Unknown error'),\n    riskLevel: 'medium',\n    reply: '感谢您的消息。我们的团队会尽快为您处理。',\n    ticketId: ticket.ticketId,\n    customerName: ticket.customerName,\n    customerEmail: ticket.customerEmail,\n    platform: ticket.platform,\n    originalMessage: ticket.chatInput,\n    errorDetails: JSON.stringify(error),\n    fallbackApplied: true,\n    n8nExecutionId: executionId,\n    n8nWorkflowId: workflowId,\n    n8nWorkflowName: workflowName,\n    failedNode: failedNode\n  }\n}];"
+        "jsCode": "const results = [];\nconst allInputs = $input.all();\nconst allTickets = $('Parse Input').all();\n\nfor (let i = 0; i < allInputs.length; i++) {\n  const error = allInputs[i].json.error || {};\n  const ticket = (allTickets[i] || allTickets[0]).json;\n\n  const executionId = $execution.id;\n  const workflowId = $workflow.id;\n  const workflowName = $workflow.name;\n  const failedNode = error.node?.name || 'AI Agent';\n  const aiCallTimeMs = Date.now() - ticket.startTime;\n\n  results.push({\n    json: {\n      aiCallTimeMs,\n      status: 'needs_review',\n      classification: 'draft',\n      reason: 'AI 分类服务暂时不可用，已标记为待审核: ' + (error.message || 'Unknown error'),\n      riskLevel: 'medium',\n      reply: '感谢您的消息。我们的团队会尽快为您处理。',\n      ticketId: ticket.ticketId,\n      customerName: ticket.customerName,\n      customerEmail: ticket.customerEmail,\n      platform: ticket.platform,\n      originalMessage: ticket.chatInput,\n      gmail_thread_id: ticket.gmail_thread_id || null,\n      gmail_message_id: ticket.gmail_message_id || null,\n      errorDetails: JSON.stringify(error),\n      fallbackApplied: true,\n      n8nExecutionId: executionId,\n      n8nWorkflowId: workflowId,\n      n8nWorkflowName: workflowName,\n      failedNode: failedNode\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "handle-ai-error",
       "name": "Handle AI Error",
@@ -193,7 +193,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details, error_msg) VALUES ('shopify-support-handler', 'ai_classification_fallback', 'degraded', '\" + JSON.stringify({ ticketId: $json.ticketId, classification: $json.classification, reason: $json.reason, riskLevel: $json.riskLevel, platform: $json.platform, fallbackApplied: $json.fallbackApplied, aiCallTimeMs: $json.aiCallTimeMs, execution_time_ms: (Date.now() - $('Parse Input').item.json.startTime), n8nExecutionId: $json.n8nExecutionId, n8nWorkflowId: $json.n8nWorkflowId, n8nWorkflowName: $json.n8nWorkflowName, failedNode: $json.failedNode }) + \"'::jsonb, '\" + $json.reason.replace(/'/g, \"''\") + \"')\" }}",
+        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details, error_msg) VALUES ('shopify-support-handler', 'ai_classification_fallback', 'degraded', '\" + JSON.stringify({ ticketId: $json.ticketId, classification: $json.classification, reason: $json.reason, riskLevel: $json.riskLevel, platform: $json.platform, fallbackApplied: $json.fallbackApplied, aiCallTimeMs: $json.aiCallTimeMs, execution_time_ms: $json.aiCallTimeMs, n8nExecutionId: $json.n8nExecutionId, n8nWorkflowId: $json.n8nWorkflowId, n8nWorkflowName: $json.n8nWorkflowName, failedNode: $json.failedNode }) + \"'::jsonb, '\" + $json.reason.replace(/'/g, \"''\") + \"')\" }}",
         "options": {}
       },
       "id": "log-degradation",
@@ -216,7 +216,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details) VALUES ('shopify-support-handler', 'support_reply', 'success', '\" + JSON.stringify({ ticketId: $json.ticketId, classification: $json.classification, reason: $json.reason, riskLevel: $json.riskLevel, platform: $json.platform, aiCallTimeMs: $json.aiCallTimeMs, execution_time_ms: (Date.now() - $('Parse Input').item.json.startTime) }) + \"'::jsonb)\" }}",
+        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details) VALUES ('shopify-support-handler', 'support_reply', 'success', '\" + JSON.stringify({ ticketId: $json.ticketId, classification: $json.classification, reason: $json.reason, riskLevel: $json.riskLevel, platform: $json.platform, aiCallTimeMs: $json.aiCallTimeMs, execution_time_ms: $json.aiCallTimeMs }) + \"'::jsonb)\" }}",
         "options": {}
       },
       "id": "log-auto",
@@ -239,7 +239,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details) VALUES ('shopify-support-handler', 'support_reply', 'success', '\" + JSON.stringify({ ticketId: $json.ticketId, classification: $json.classification, reason: $json.reason, riskLevel: $json.riskLevel, platform: $json.platform, aiCallTimeMs: $json.aiCallTimeMs, execution_time_ms: (Date.now() - $('Parse Input').item.json.startTime) }) + \"'::jsonb)\" }}",
+        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details) VALUES ('shopify-support-handler', 'support_reply', 'success', '\" + JSON.stringify({ ticketId: $json.ticketId, classification: $json.classification, reason: $json.reason, riskLevel: $json.riskLevel, platform: $json.platform, aiCallTimeMs: $json.aiCallTimeMs, execution_time_ms: $json.aiCallTimeMs }) + \"'::jsonb)\" }}",
         "options": {}
       },
       "id": "log-draft",
@@ -262,7 +262,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details) VALUES ('shopify-support-handler', 'support_reply', 'success', '\" + JSON.stringify({ ticketId: $json.ticketId, classification: $json.classification, reason: $json.reason, riskLevel: $json.riskLevel, platform: $json.platform, aiCallTimeMs: $json.aiCallTimeMs, execution_time_ms: (Date.now() - $('Parse Input').item.json.startTime) }) + \"'::jsonb)\" }}",
+        "query": "={{ \"INSERT INTO ai_processing_log (workflow_id, action, status, details) VALUES ('shopify-support-handler', 'support_reply', 'success', '\" + JSON.stringify({ ticketId: $json.ticketId, classification: $json.classification, reason: $json.reason, riskLevel: $json.riskLevel, platform: $json.platform, aiCallTimeMs: $json.aiCallTimeMs, execution_time_ms: $json.aiCallTimeMs }) + \"'::jsonb)\" }}",
         "options": {}
       },
       "id": "log-escalate",
@@ -370,7 +370,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ status: $('Route by Classification').first().json.status, classification: $('Route by Classification').first().json.classification, reply: $('Route by Classification').first().json.reply, reason: $('Route by Classification').first().json.reason, riskLevel: $('Route by Classification').first().json.riskLevel, ticketId: $('Route by Classification').first().json.ticketId }) }}",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: $json.reply, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
         "options": {}
       },
       "id": "respond-auto",
@@ -385,7 +385,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ status: $('Route by Classification').first().json.status, classification: $('Route by Classification').first().json.classification, reply: $('Route by Classification').first().json.reply, reason: $('Route by Classification').first().json.reason, riskLevel: $('Route by Classification').first().json.riskLevel, ticketId: $('Route by Classification').first().json.ticketId }) }}",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: $json.reply, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
         "options": {}
       },
       "id": "respond-draft",
@@ -400,7 +400,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ status: $('Route by Classification').first().json.status, classification: $('Route by Classification').first().json.classification, reply: null, reason: $('Route by Classification').first().json.reason, riskLevel: $('Route by Classification').first().json.riskLevel, ticketId: $('Route by Classification').first().json.ticketId }) }}",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, classification: $json.classification, reply: null, reason: $json.reason, riskLevel: $json.riskLevel, ticketId: $json.ticketId }) }}",
         "options": {}
       },
       "id": "respond-escalate",
@@ -464,7 +464,7 @@
       "typeVersion": 2,
       "position": [
         1300,
-        900
+        620
       ]
     },
     {
@@ -484,7 +484,7 @@
       "typeVersion": 4.2,
       "position": [
         1500,
-        900
+        620
       ],
       "credentials": {
         "hubspotApi": {
@@ -496,7 +496,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const searchResult = $input.first().json;\nconst ticket = $('Parse Classification').first().json || $('Handle AI Error').first().json;\n\nlet contactId = null;\n\n// 检查搜索结果\nif (searchResult.results && searchResult.results.length > 0) {\n  contactId = searchResult.results[0].id;\n} else {\n  // 需要创建新 contact\n  contactId = null;\n}\n\nreturn [{\n  json: {\n    contactId,\n    needsCreate: contactId === null,\n    customerEmail: ticket.customerEmail,\n    customerName: ticket.customerName,\n    platform: ticket.platform,\n    ticketId: ticket.ticketId,\n    classification: ticket.classification,\n    reason: ticket.reason,\n    riskLevel: ticket.riskLevel,\n    reply: ticket.reply\n  }\n}];"
+        "jsCode": "const results = [];\nconst allSearchResults = $input.all();\nconst allTickets = $('Parse Classification').all();\n\nfor (let i = 0; i < allSearchResults.length; i++) {\n  const searchResult = allSearchResults[i].json;\n  const ticket = (allTickets[i] || allTickets[0]).json;\n\n  let contactId = null;\n  if (searchResult.results && searchResult.results.length > 0) {\n    contactId = searchResult.results[0].id;\n  }\n\n  results.push({\n    json: {\n      contactId,\n      needsCreate: contactId === null,\n      customerEmail: ticket.customerEmail,\n      customerName: ticket.customerName,\n      platform: ticket.platform,\n      ticketId: ticket.ticketId,\n      classification: ticket.classification,\n      reason: ticket.reason,\n      riskLevel: ticket.riskLevel,\n      reply: ticket.reply\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "check-contact-exists",
       "name": "Check Contact Exists",
@@ -504,7 +504,7 @@
       "typeVersion": 2,
       "position": [
         1700,
-        900
+        620
       ]
     },
     {
@@ -536,7 +536,7 @@
       "typeVersion": 2,
       "position": [
         1900,
-        900
+        620
       ]
     },
     {
@@ -556,7 +556,7 @@
       "typeVersion": 4.2,
       "position": [
         2100,
-        800
+        580
       ],
       "credentials": {
         "hubspotApi": {
@@ -568,7 +568,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const ticket = $input.first().json;\nconst createResult = $input.first().json;\n\n// 从创建响应中提取 contactId\nconst contactId = createResult.id || ticket.contactId;\n\nreturn [{\n  json: {\n    hubspotContactId: contactId,\n    customerEmail: ticket.customerEmail,\n    customerName: ticket.customerName,\n    platform: ticket.platform,\n    ticketId: ticket.ticketId,\n    classification: ticket.classification,\n    reason: ticket.reason,\n    riskLevel: ticket.riskLevel,\n    reply: ticket.reply\n  }\n}];"
+        "jsCode": "const results = [];\nconst allInputs = $input.all();\n\nfor (const item of allInputs) {\n  const createResult = item.json;\n  const contactId = createResult.id || createResult.contactId;\n  results.push({\n    json: {\n      hubspotContactId: contactId,\n      customerEmail: createResult.customerEmail,\n      customerName: createResult.customerName,\n      platform: createResult.platform,\n      ticketId: createResult.ticketId,\n      classification: createResult.classification,\n      reason: createResult.reason,\n      riskLevel: createResult.riskLevel,\n      reply: createResult.reply\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "extract-contact-id-create",
       "name": "Extract Contact ID (Create)",
@@ -576,12 +576,12 @@
       "typeVersion": 2,
       "position": [
         2300,
-        800
+        580
       ]
     },
     {
       "parameters": {
-        "jsCode": "const ticket = $input.first().json;\n\n// 使用已有的 contactId\nreturn [{\n  json: {\n    hubspotContactId: ticket.contactId,\n    customerEmail: ticket.customerEmail,\n    customerName: ticket.customerName,\n    platform: ticket.platform,\n    ticketId: ticket.ticketId,\n    classification: ticket.classification,\n    reason: ticket.reason,\n    riskLevel: ticket.riskLevel,\n    reply: ticket.reply\n  }\n}];"
+        "jsCode": "const results = [];\nconst allInputs = $input.all();\n\nfor (const item of allInputs) {\n  const ticket = item.json;\n  results.push({\n    json: {\n      hubspotContactId: ticket.contactId,\n      customerEmail: ticket.customerEmail,\n      customerName: ticket.customerName,\n      platform: ticket.platform,\n      ticketId: ticket.ticketId,\n      classification: ticket.classification,\n      reason: ticket.reason,\n      riskLevel: ticket.riskLevel,\n      reply: ticket.reply\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "extract-contact-id-existing",
       "name": "Extract Contact ID (Existing)",
@@ -589,7 +589,7 @@
       "typeVersion": 2,
       "position": [
         2300,
-        1000
+        660
       ]
     },
     {
@@ -603,7 +603,7 @@
       "typeVersion": 3,
       "position": [
         2500,
-        900
+        620
       ]
     },
     {
@@ -623,7 +623,7 @@
       "typeVersion": 4.2,
       "position": [
         2700,
-        900
+        620
       ],
       "credentials": {
         "hubspotApi": {
@@ -671,7 +671,7 @@
       "typeVersion": 2,
       "position": [
         1300,
-        1300
+        760
       ]
     },
     {
@@ -697,7 +697,7 @@
       "typeVersion": 4.2,
       "position": [
         1500,
-        1300
+        760
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -709,7 +709,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const searchResult = $input.first().json;\nconst ticket = $('Parse Classification').first().json || $('Handle AI Error').first().json;\nconst contacts = searchResult.contacts || [];\nconst exists = contacts.length > 0;\nreturn [{\n  json: {\n    ...ticket,\n    contactExists: exists,\n    contactId: exists ? contacts[0].id : null\n  }\n}];"
+        "jsCode": "const results = [];\nconst allSearchResults = $input.all();\nconst allTickets = $('Parse Classification').all();\n\nfor (let i = 0; i < allSearchResults.length; i++) {\n  const searchResult = allSearchResults[i].json;\n  const ticket = (allTickets[i] || allTickets[0]).json;\n  const contacts = searchResult.contacts || [];\n  const exists = contacts.length > 0;\n  results.push({\n    json: {\n      ...ticket,\n      contactExists: exists,\n      contactId: exists ? contacts[0].id : null\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "ghl-check-exists",
       "name": "GHL: Check Contact Exists",
@@ -717,7 +717,7 @@
       "typeVersion": 2,
       "position": [
         1700,
-        1300
+        760
       ]
     },
     {
@@ -778,7 +778,7 @@
       "typeVersion": 3,
       "position": [
         1900,
-        1300
+        760
       ]
     },
     {
@@ -807,7 +807,7 @@
       "typeVersion": 4.2,
       "position": [
         2100,
-        1200
+        720
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -819,7 +819,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const created = $input.first().json;\nconst prev = $input.first().json;\nreturn [{\n  json: {\n    ...prev,\n    resolvedContactId: created.contact?.id || created.id || 'unknown'\n  }\n}];"
+        "jsCode": "const results = [];\nconst allInputs = $input.all();\n\nfor (const item of allInputs) {\n  const created = item.json;\n  results.push({\n    json: {\n      ...created,\n      resolvedContactId: created.contact?.id || created.id || 'unknown'\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "ghl-extract-id-create",
       "name": "GHL: Extract ID (Create)",
@@ -827,12 +827,12 @@
       "typeVersion": 2,
       "position": [
         2300,
-        1200
+        720
       ]
     },
     {
       "parameters": {
-        "jsCode": "const prev = $input.first().json;\nreturn [{\n  json: {\n    ...prev,\n    resolvedContactId: prev.contactId || 'unknown'\n  }\n}];"
+        "jsCode": "const results = [];\nconst allInputs = $input.all();\n\nfor (const item of allInputs) {\n  const prev = item.json;\n  results.push({\n    json: {\n      ...prev,\n      resolvedContactId: prev.contactId || 'unknown'\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "ghl-extract-id-existing",
       "name": "GHL: Extract ID (Existing)",
@@ -840,7 +840,7 @@
       "typeVersion": 2,
       "position": [
         2300,
-        1400
+        800
       ]
     },
     {
@@ -854,7 +854,7 @@
       "typeVersion": 3,
       "position": [
         2500,
-        1300
+        760
       ]
     },
     {
@@ -883,7 +883,7 @@
       "typeVersion": 4.2,
       "position": [
         2700,
-        1300
+        760
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -931,7 +931,7 @@
       "typeVersion": 2,
       "position": [
         1300,
-        1700
+        900
       ]
     },
     {
@@ -949,7 +949,7 @@
       "typeVersion": 2.3,
       "position": [
         1500,
-        1700
+        900
       ],
       "credentials": {
         "slackOAuth2Api": {
@@ -988,7 +988,7 @@
       "typeVersion": 2,
       "position": [
         1300,
-        2100
+        1040
       ]
     },
     {
@@ -1001,7 +1001,7 @@
       "typeVersion": 2,
       "position": [
         1450,
-        2100
+        1040
       ]
     },
     {
@@ -1031,7 +1031,7 @@
       "typeVersion": 2.1,
       "position": [
         1500,
-        2100
+        1040
       ],
       "credentials": {
         "airtableTokenApi": {
@@ -1040,10 +1040,310 @@
         }
       },
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "google-scan",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "google-scan-webhook",
+      "name": "Google Scan Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 1700],
+      "webhookId": "google-scan"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 10,
+        "simple": false,
+        "filters": {
+          "includeSpamTrash": false,
+          "labelIds": ["INBOX"],
+          "q": "label:GmailFlow-Test"
+        },
+        "options": {}
+      },
+      "id": "fetch-gmail-messages",
+      "name": "Fetch Gmail Messages",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [300, 1700],
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const email = item.json;\n\n  // email.from 是对象：{ value: [{ address, name }], text }\n  let customerEmail = '';\n  let customerName = 'Customer';\n\n  if (email.from && email.from.value && email.from.value.length > 0) {\n    customerEmail = email.from.value[0].address || '';\n    customerName = email.from.value[0].name || email.from.value[0].address || 'Customer';\n  } else if (typeof email.from === 'string') {\n    const match = email.from.match(/<([^>]+)>/);\n    customerEmail = match ? match[1].trim() : email.from.trim();\n    customerName = email.from.replace(/<[^>]+>/, '').trim() || 'Customer';\n  }\n\n  const message = email.snippet || email.bodyText || email.text || 'No content';\n  const body = { message, customerName, customerEmail, platform: 'gmail', ticketId: Date.now(), orderId: null };\n\n  results.push({\n    json: {\n      body,\n      gmail_thread_id: email.threadId || null,\n      gmail_message_id: email.id || null\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "extract-email-data",
+      "name": "Extract Email Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 1700]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "google-scan-response",
+      "name": "Google Scan Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 1700]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nconst allTickets = $input.all();\n\nfor (const item of allTickets) {\n  const ticket = item.json;\n  results.push({\n    json: {\n      'Ticket ID': String(ticket.ticketId),\n      'Source': ticket.platform || 'unknown',\n      'Customer Email': ticket.customerEmail,\n      'Customer Name': ticket.customerName,\n      'Classification': ticket.classification,\n      'Status': ticket.status,\n      'Risk Level': ticket.riskLevel,\n      'AI Reply': ticket.reply || '',\n      'Reason': ticket.reason || '',\n      'Original Message': ticket.originalMessage || '',\n      'Order ID': ticket.orderId || '',\n      'Timestamp': new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "transform-for-google-sheets",
+      "name": "Transform for Google Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 1180]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Mq_5PX5D9XHJeahgJ1g8zkp2eY1txloHFfF_1BoWHUY",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Support Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "append-to-google-sheets",
+      "name": "Append to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1500, 1180],
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google OAuth2"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-auto",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "auto",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "check-email",
+              "leftValue": "={{ $json.customerEmail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-gmail-auto-reply",
+      "name": "Check Gmail Auto Reply",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1300, 1320]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.customerEmail }}",
+        "subject": "=Re: Your Support Request",
+        "message": "={{ $json.reply }}",
+        "options": {
+          "threadId": "={{ $json.gmail_thread_id || '' }}"
+        }
+      },
+      "id": "send-gmail-reply",
+      "name": "Send Gmail Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1500, 1320],
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google OAuth2"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-classification",
+              "leftValue": "={{ $json.classification }}",
+              "rightValue": "auto",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-drive-upload",
+      "name": "Check Drive Upload",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1300, 1460]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nconst allInputs = $input.all();\n\nfor (const item of allInputs) {\n  const ticket = item.json;\n  const content = `Support Ticket #${ticket.ticketId}\\n\\nClassification: ${ticket.classification}\\nRisk Level: ${ticket.riskLevel}\\nStatus: ${ticket.status}\\n\\nCustomer: ${ticket.customerName} (${ticket.customerEmail})\\n\\nOriginal Message:\\n${ticket.originalMessage}\\n\\nAI Classification Reason:\\n${ticket.reason}\\n\\nAI Generated Reply:\\n${ticket.reply || 'Needs manual handling'}\\n\\nTimestamp: ${new Date().toISOString()}\\n`;\n  const binaryData = Buffer.from(content, 'utf-8').toString('base64');\n  results.push({\n    json: ticket,\n    binary: {\n      data: {\n        data: binaryData,\n        mimeType: 'text/plain',\n        fileName: `Ticket-${ticket.ticketId}.txt`\n      }\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "generate-ticket-file",
+      "name": "Generate Ticket File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 1460]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "name": "=Ticket-{{ $json.ticketId }}-{{ $now.format('YYYY-MM-DD') }}.txt",
+        "parents": {
+          "__rl": true,
+          "value": "18yx0TZ3FoNsgV-c41i135hW-lByJAux3",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "upload-to-google-drive",
+      "name": "Upload to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1700, 1460],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google OAuth2"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nconst allInputs = $input.all();\n\nfor (const item of allInputs) {\n  const ticket = item.json;\n  const message = ticket.originalMessage || '';\n  const hasSchedulingKeywords = /schedule|appointment|meeting|book|call|demo|visit/i.test(message);\n  if (!hasSchedulingKeywords) {\n    continue;\n  }\n  const tomorrow = new Date();\n  tomorrow.setDate(tomorrow.getDate() + 1);\n  tomorrow.setHours(10, 0, 0, 0);\n  const endTime = new Date(tomorrow);\n  endTime.setHours(11, 0, 0, 0);\n  results.push({\n    json: {\n      ...ticket,\n      calendar_start: tomorrow.toISOString(),\n      calendar_end: endTime.toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "check-calendar-scheduling",
+      "name": "Check Calendar Scheduling",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 1600]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "calendarId": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "start": "={{ $json.calendar_start }}",
+        "end": "={{ $json.calendar_end }}",
+        "options": {
+          "description": "=Customer: {{ $json.customerName }} ({{ $json.customerEmail }})\n\nOriginal Request:\n{{ $json.originalMessage }}",
+          "summary": "=Support Call - {{ $json.customerName }}",
+          "attendees": "={{ $json.customerEmail }}",
+          "sendUpdates": "all"
+        }
+      },
+      "id": "create-calendar-event",
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [1500, 1600],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "google-oauth2",
+          "name": "Google OAuth2"
+        }
+      },
+      "continueOnFail": true
     }
   ],
   "connections": {
     "Shopify Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Scan Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Gmail Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Gmail Messages": {
+      "main": [
+        [
+          {
+            "node": "Extract Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Email Data": {
       "main": [
         [
           {
@@ -1164,6 +1464,36 @@
             "node": "Check Email Valid",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Transform for Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Gmail Auto Reply",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Drive Upload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Docs Escalation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Calendar Scheduling",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Scan Response",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -1198,6 +1528,36 @@
           },
           {
             "node": "Check Email Valid",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Transform for Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Gmail Auto Reply",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Drive Upload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Docs Escalation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Calendar Scheduling",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Scan Response",
             "type": "main",
             "index": 0
           }
@@ -1517,6 +1877,83 @@
       ]
     },
     "Create Airtable Record": {
+      "main": [
+        []
+      ]
+    },
+    "Transform for Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Append to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Google Sheets": {
+      "main": [
+        []
+      ]
+    },
+    "Check Gmail Auto Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send Gmail Reply": {
+      "main": [
+        []
+      ]
+    },
+    "Check Drive Upload": {
+      "main": [
+        [
+          {
+            "node": "Generate Ticket File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Generate Ticket File": {
+      "main": [
+        [
+          {
+            "node": "Upload to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Google Drive": {
+      "main": [
+        []
+      ]
+    },
+    "Check Calendar Scheduling": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Event": {
       "main": [
         []
       ]
