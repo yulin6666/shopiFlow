@@ -1103,13 +1103,42 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "sheets-enabled",
+              "leftValue": "={{ true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-google-sheets-enabled",
+      "name": "Check Google Sheets Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1300, 1180]
+    },
+    {
+      "parameters": {
         "jsCode": "const results = [];\nconst allTickets = $input.all();\n\nfor (const item of allTickets) {\n  const ticket = item.json;\n  results.push({\n    json: {\n      'Ticket ID': String(ticket.ticketId),\n      'Source': ticket.platform || 'unknown',\n      'Customer Email': ticket.customerEmail,\n      'Customer Name': ticket.customerName,\n      'Classification': ticket.classification,\n      'Status': ticket.status,\n      'Risk Level': ticket.riskLevel,\n      'AI Reply': ticket.reply || '',\n      'Reason': ticket.reason || '',\n      'Original Message': ticket.originalMessage || '',\n      'Order ID': ticket.orderId || '',\n      'Timestamp': new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "transform-for-google-sheets",
       "name": "Transform for Google Sheets",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1300, 1180]
+      "position": [1450, 1180]
     },
     {
       "parameters": {
@@ -1136,7 +1165,7 @@
       "name": "Append to Google Sheets",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
-      "position": [1500, 1180],
+      "position": [1650, 1180],
       "credentials": {
         "googleOAuth2Api": {
           "id": "google-oauth2",
@@ -1170,6 +1199,15 @@
               "operator": {
                 "type": "string",
                 "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "gmail-reply-enabled",
+              "leftValue": "={{ true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
               }
             }
           ],
@@ -1222,6 +1260,15 @@
                 "type": "string",
                 "operation": "notEquals"
               }
+            },
+            {
+              "id": "drive-enabled",
+              "leftValue": "={{ true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
             }
           ],
           "combinator": "and"
@@ -1270,13 +1317,42 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "calendar-enabled",
+              "leftValue": "={{ true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-google-calendar-enabled",
+      "name": "Check Google Calendar Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1300, 1600]
+    },
+    {
+      "parameters": {
         "jsCode": "const results = [];\nconst allInputs = $input.all();\n\nfor (const item of allInputs) {\n  const ticket = item.json;\n  const message = ticket.originalMessage || '';\n  const hasSchedulingKeywords = /schedule|appointment|meeting|book|call|demo|visit/i.test(message);\n  if (!hasSchedulingKeywords) {\n    continue;\n  }\n  const tomorrow = new Date();\n  tomorrow.setDate(tomorrow.getDate() + 1);\n  tomorrow.setHours(10, 0, 0, 0);\n  const endTime = new Date(tomorrow);\n  endTime.setHours(11, 0, 0, 0);\n  results.push({\n    json: {\n      ...ticket,\n      calendar_start: tomorrow.toISOString(),\n      calendar_end: endTime.toISOString()\n    }\n  });\n}\n\nreturn results;"
       },
       "id": "check-calendar-scheduling",
       "name": "Check Calendar Scheduling",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1300, 1600]
+      "position": [1450, 1600]
     },
     {
       "parameters": {
@@ -1299,7 +1375,7 @@
       "name": "Create Calendar Event",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.2,
-      "position": [1500, 1600],
+      "position": [1650, 1600],
       "credentials": {
         "googleCalendarOAuth2Api": {
           "id": "google-oauth2",
@@ -1466,7 +1542,7 @@
             "index": 0
           },
           {
-            "node": "Transform for Google Sheets",
+            "node": "Check Google Sheets Enabled",
             "type": "main",
             "index": 0
           },
@@ -1486,7 +1562,7 @@
             "index": 0
           },
           {
-            "node": "Check Calendar Scheduling",
+            "node": "Check Google Calendar Enabled",
             "type": "main",
             "index": 0
           },
@@ -1532,7 +1608,7 @@
             "index": 0
           },
           {
-            "node": "Transform for Google Sheets",
+            "node": "Check Google Sheets Enabled",
             "type": "main",
             "index": 0
           },
@@ -1552,7 +1628,7 @@
             "index": 0
           },
           {
-            "node": "Check Calendar Scheduling",
+            "node": "Check Google Calendar Enabled",
             "type": "main",
             "index": 0
           },
@@ -1881,6 +1957,18 @@
         []
       ]
     },
+    "Check Google Sheets Enabled": {
+      "main": [
+        [
+          {
+            "node": "Transform for Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
     "Transform for Google Sheets": {
       "main": [
         [
@@ -1939,6 +2027,18 @@
     },
     "Upload to Google Drive": {
       "main": [
+        []
+      ]
+    },
+    "Check Google Calendar Enabled": {
+      "main": [
+        [
+          {
+            "node": "Check Calendar Scheduling",
+            "type": "main",
+            "index": 0
+          }
+        ],
         []
       ]
     },
